@@ -97,7 +97,7 @@ const window = {
   __ModuleLoader__: {
     load({ id, factory: f }) {
       factory = f;
-      check("bundle registers loader entry", id === "dsh-codex-skin", `id=${id}`);
+      check("bundle registers loader entry", id === "dsh_skin_blossom", `id=${id}`);
     },
   },
 };
@@ -265,14 +265,14 @@ function makeCtx({ preference, activeId, palette }) {
       ctx._overridden[0]?.tokens?.["--dsw-alias-bg-base"]?.dark !== undefined,
     `pairs=${Object.keys(ctx._overridden[0]?.tokens ?? {}).length}`
   );
-  check("injects the deco stylesheet", document.getElementById("dsh-codex-skin-style") !== null);
+  check("injects the deco stylesheet", document.getElementById("dsh_skin_blossom-style") !== null);
   check("appends the inert deco layer after the app root", (() => {
-    const layer = document.getElementById("dsh-codex-skin-deco");
+    const layer = document.getElementById("dsh_skin_blossom-deco");
     if (layer === null) return false;
     if (layer.children.length !== 19) return false;
     if (layer.attributes["aria-hidden"] !== "true") return false;
     return document.body.children.indexOf(layer) === document.body.children.length - 1;
-  })(), `children=${document.getElementById("dsh-codex-skin-deco")?.children.length}`);
+  })(), `children=${document.getElementById("dsh_skin_blossom-deco")?.children.length}`);
   check("settings row targets the general item slot", ctx._slotName === "settings.general.item", `slot=${ctx._slotName}`);
   check("settings row id is namespaced", ctx._slotSpec?.id === "codex-skin", `id=${ctx._slotSpec?.id}`);
   check("claims the skin on the first snapshot (no timer)", ctx._setThemeCalls.includes("codex-theme-v1"), JSON.stringify(ctx._setThemeCalls));
@@ -289,7 +289,7 @@ function makeCtx({ preference, activeId, palette }) {
 // ── scenario 3: the user already chose in this tab ───────────────────────────
 {
   storage.clear();
-  storage.set("dsh-codex-skin:user-choice", "1");
+  storage.set("dsh_skin_blossom:user-choice", "1");
   const ctx = makeCtx({ preference: "light", activeId: "light", palette: "light" });
   exports.apply(ctx);
   check("respects the in-tab user choice", !ctx._setThemeCalls.includes("codex-theme-v1"), JSON.stringify(ctx._setThemeCalls));
@@ -303,7 +303,7 @@ function makeCtx({ preference, activeId, palette }) {
   const row = ctx._slotComp({ ctx });
   row.children[1].props.onClick();
   check("row switches back to built-in light", ctx._setThemeCalls.at(-1) === "light", JSON.stringify(ctx._setThemeCalls.slice(-1)));
-  check("row records the user choice", storage.get("dsh-codex-skin:user-choice") === "1");
+  check("row records the user choice", storage.get("dsh_skin_blossom:user-choice") === "1");
 
   // A second apply in the same tab must not steal the choice back.
   const ctx2 = makeCtx({ preference: "dark", activeId: "dark", palette: "dark" });
@@ -317,8 +317,8 @@ function makeCtx({ preference, activeId, palette }) {
   for (const node of [...nodes]) node.remove();
   const ctx = makeCtx({ preference: "codex-theme-v1", activeId: "codex-theme-v1", palette: "light" });
   exports.apply(ctx);
-  const styles = () => document.getElementById("dsh-codex-skin-style");
-  const layer = () => document.getElementById("dsh-codex-skin-deco");
+  const styles = () => document.getElementById("dsh_skin_blossom-style");
+  const layer = () => document.getElementById("dsh_skin_blossom-deco");
   check("deco installed before teardown", styles() !== null && layer() !== null);
   for (const { dispose } of ctx._effects) if (typeof dispose === "function") dispose();
   check("teardown removes the stylesheet and the layer", styles() === null && layer() === null);

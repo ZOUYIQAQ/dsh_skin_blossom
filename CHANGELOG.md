@@ -1,8 +1,16 @@
-﻿# dsh-codex-skin
+# dsh_skin_blossom
 
 把 **codex-theme-v1** 映射到 DSH Web GUI 的主题皮肤。
 
 主皮肤是 **rose-pine light**（`variant: "light"`，surface `#faf4ed` / ink `#575279` / accent `#d7827e`）；第一版导出的 **oscurange dark** 调色板保留为可选方案，两套 `--dsw-alias-*` 层都是完整的，因此从「外观」往任一方向切都不会落到不可读的组合。
+
+## 2026-09-20：修复「完全不加载」+ 按仓库名统一改名
+
+| 变更 | 说明 |
+|---|---|
+| 修复 `cordis.patch.yml` 的注释语法 | 该文件是 YAML，原先却用了 `//` 行注释（JS 风格），导致整份 patch 解析失败、Loader 拿不到 `insert` 行，插件一行都不生效。改为 `#` 注释后恢复正常加载。 |
+| 插件改名 | 包名 / `dsh.id` / `dsh.name` / Loader 行 id / 客户端模块 id / DOM id（`-style` `-deco` `-anchor` `-row`）/ `sessionStorage` 键 / `overrideTokens` 源名 / 日志前缀，统一改为仓库名 `dsh_skin_blossom`（原 `dsh-codex-skin`）。 |
+| 保持不变的标识 | 主题 id 仍是 `codex-theme-v1`（改它会让既有主题配置失效）；样式命名空间 `--dsh-codex-*` 与 `.dsh-codex-*` 也不动，避免装饰层与色阶整体回归。 |
 
 | 项 | 值 |
 |---|---|
@@ -15,7 +23,7 @@
 | token 数 | 浅色 194 / 深色 147（`--dsw-*` + `--shiki-*` + 自定义变量 + 色阶） |
 | 调色板 | 统一后 46 个字面颜色（收敛前 54），分 rose / violet / teal / ochre / neutral 五族 |
 | 对比度 | 浅色 23 项 + 深色 23 项全部通过，见 `theme-tokens.json`；另有 alias 全表比对，确保无 token 掉回深色 |
-| 点缀层 | 一个 `#dsh-codex-skin-deco` 固定层：波点底纹、两处半调晕染、四角十字星（呼吸动效），`pointer-events:none` + `z-index:-1` |
+| 点缀层 | 一个 `#dsh_skin_blossom-deco` 固定层：波点底纹、两处半调晕染、四角十字星（呼吸动效），`pointer-events:none` + `z-index:-1` |
 
 ## 调色板统一（scripts/build.mjs 的 `MERGE_PAIRS`）
 
@@ -38,10 +46,10 @@
 
 ## 安装（已在本机完成）
 
-1. 插件目录：`D:\software\dsh\data\plugins\dsh-codex-skin`
-2. junction：`data\profiles\web\node_modules\dsh-codex-skin` → 插件目录
-3. `data\profiles\web\package.json` 增加 `"dsh-codex-skin": "file:../../plugins/dsh-codex-skin"`
-4. `data\profiles\web\cordis.patch.yml` 增加 `- id: dsh-codex-skin`
+1. 插件目录：`D:\software\dsh\data\plugins\dsh_skin_blossom`
+2. junction：`data\profiles\web\node_modules\dsh_skin_blossom` → 插件目录
+3. `data\profiles\web\package.json` 增加 `"dsh_skin_blossom": "file:../../plugins/dsh_skin_blossom"`
+4. `data\profiles\web\cordis.patch.yml` 增加 `- id: dsh_skin_blossom`
 
 宿主监听 patch 文件（`patchReload: live`），因此第 4 步保存后**无需重启**，刷新页面即生效。
 
@@ -51,9 +59,9 @@
 |---|---|
 | `ctx.theme.register()` | 注册 `codex-theme-v1`（`colorScheme: "dark"`）与深色 token 字典；ui-layout 的 `ThemePresenter` 把每个 token 写成 `document.body` 的内联 CSS 变量，优先级高于内置样式表，卸载时逐个 `removeProperty` |
 | `ctx.theme.overrideTokens()` | 叠加 `{light, dark}` 双模覆盖层，保证 `system` 偏好解析为浅色时也可读 |
-| 一次性 `setTheme()` | 首个快照到达即接管（不再依赖定时器），条件为「持久偏好仍是内置值」；本标签页内的显式选择写入 `sessionStorage` 的 `dsh-codex-skin:user-choice`，此后不再被抢回。皮肤 id 不属于 `light\|dark\|system`，`ThemeRuntime.setTheme` 判定 `isThemePreference(id)` 为假，因此**不会**写入 settings 文档，规避 host schema 校验 |
+| 一次性 `setTheme()` | 首个快照到达即接管（不再依赖定时器），条件为「持久偏好仍是内置值」；本标签页内的显式选择写入 `sessionStorage` 的 `dsh_skin_blossom:user-choice`，此后不再被抢回。皮肤 id 不属于 `light\|dark\|system`，`ThemeRuntime.setTheme` 判定 `isThemePreference(id)` 为假，因此**不会**写入 settings 文档，规避 host schema 校验 |
 | `$DSH_HOME/settings.yaml` | `ui-theme.preference: light` —— 服务端注入 index 时内联进 boot 脚本，**首帧即深色**，不闪白。这是皮肤不可用时的保底 |
-| 命名空间样式表 | `#dsh-codex-skin-style`：选区配色、滚动条配色、超椭圆圆角的 `corner-shape: round` 配对。随插件卸载自动移除 |
+| 命名空间样式表 | `#dsh_skin_blossom-style`：选区配色、滚动条配色、超椭圆圆角的 `corner-shape: round` 配对。随插件卸载自动移除 |
 | 设置行 | 设置 → 通用 → 「Codex 皮肤（oscurange）」，显示当前主题并可一键切回内置 `dark` |
 
 不修改 DSH 安装目录里的任何文件，也不碰 `dsh-web-frontend/dist`。
@@ -62,11 +70,11 @@
 
 ```powershell
 # 1. 注释掉 cordis.patch.yml 里这两行（保存即卸载，无需重启）
-#    - id: dsh-codex-skin
-#      name: dsh-codex-skin
+#    - id: dsh_skin_blossom
+#      name: dsh_skin_blossom
 # 2. 或整目录移除
-Remove-Item D:\software\dsh\data\profiles\web\node_modules\dsh-codex-skin -Force
-Remove-Item D:\software\dsh\data\plugins\dsh-codex-skin -Recurse -Force
+Remove-Item D:\software\dsh\data\profiles\web\node_modules\dsh_skin_blossom -Force
+Remove-Item D:\software\dsh\data\plugins\dsh_skin_blossom -Recurse -Force
 ```
 
 皮肤只写 `document.body` 的内联变量与一个 `<style>` 节点，卸载后立即回到 `data-ds-dark-theme` 的调色板。
@@ -76,7 +84,7 @@ Remove-Item D:\software\dsh\data\plugins\dsh-codex-skin -Recurse -Force
 `scripts/build.mjs` 是唯一真源：改 `SPEC` 或派生规则，然后
 
 ```powershell
-cd D:\software\dsh\data\plugins\dsh-codex-skin
+cd D:\software\dsh\data\plugins\dsh_skin_blossom
 node scripts/build.mjs      # 重新生成 client.js + theme-tokens.json，并跑对比度门禁
 node scripts/test-client.mjs # 16 项运行时契约测试（stub 掉 loader/cordis/DOM）
 ```
@@ -89,8 +97,8 @@ node scripts/test-client.mjs # 16 项运行时契约测试（stub 掉 loader/cor
 
 1. **确认首帧脚本** —— 页面源码里应有 `const preference = "dark"`：
    `(Invoke-WebRequest "http://127.0.0.1:3080/?token=<TOKEN>").Content -match 'const preference = "(dark|light|system)"'`
-2. **确认插件已进启动图** —— 同一份 HTML 应含 `"id":"dsh-codex-skin"`。
-3. **确认浏览器里插件跑起来了** —— 控制台（F12）应打印 `[dsh-codex-skin] codex-theme-v1 active`；若没有，看是否有 `[dsh-codex-skin] client runtime error`。
+2. **确认插件已进启动图** —— 同一份 HTML 应含 `"id":"dsh_skin_blossom"`。
+3. **确认浏览器里插件跑起来了** —— 控制台（F12）应打印 `[dsh_skin_blossom] codex-theme-v1 active`；若没有，看是否有 `[dsh_skin_blossom] client runtime error`。
 4. **一键探针**（控制台粘贴）：
    ```js
    document.body.hasAttribute('data-ds-dark-theme') &&

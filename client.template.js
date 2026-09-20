@@ -1,5 +1,5 @@
 /**
- * dsh-codex-skin — browser half.
+ * dsh_skin_blossom — browser half.
  *
  * Applies `codex-theme-v1` to the DSH Web GUI through the supported extension
  * points only:
@@ -23,7 +23,7 @@
 (() => {
   try {
     window.__ModuleLoader__.load({
-      id: "dsh-codex-skin",
+      id: "dsh_skin_blossom",
       factory: (require) => {
         var module = { exports: {} };
         var exports = module.exports;
@@ -40,9 +40,9 @@
         // configurations already pointing at it.
         var THEME_LABEL = "Blossom";
         var SETTINGS_NS = "settings.codex-skin";
-        var STYLE_ID = "dsh-codex-skin-style";
-        var DECO_ID = "dsh-codex-skin-deco";
-        var ANCHOR_ID = "dsh-codex-skin-anchor";
+        var STYLE_ID = "dsh_skin_blossom-style";
+        var DECO_ID = "dsh_skin_blossom-deco";
+        var ANCHOR_ID = "dsh_skin_blossom-anchor";
         /** Decoration layer children, in paint order; all pure CSS shapes. */
         var DECO_PARTS = [
           // Dots first, then colour, then small marks. Nothing is anchored to the
@@ -550,7 +550,7 @@
           if (document.getElementById(STYLE_ID) === null) {
             var tag = document.createElement("style");
             tag.id = STYLE_ID;
-            tag.dataset.plugin = "dsh-codex-skin";
+            tag.dataset.plugin = "dsh_skin_blossom";
             tag.textContent = DECO_CSS;
             document.head.appendChild(tag);
           }
@@ -652,7 +652,7 @@
         /** Remember an explicit choice so default activation never overrides it. */
         function markUserChoice() {
           try {
-            sessionStorage.setItem("dsh-codex-skin:user-choice", "1");
+            sessionStorage.setItem("dsh_skin_blossom:user-choice", "1");
           } catch (error) {
             /* storage may be unavailable; the skin simply stays opt-out-by-choice-free */
           }
@@ -687,7 +687,7 @@
             try {
               theme.setTheme(on ? "light" : THEME_ID);
             } catch (error) {
-              console.warn("[dsh-codex-skin] setTheme failed:", error);
+              console.warn("[dsh_skin_blossom] setTheme failed:", error);
             }
           };
 
@@ -697,16 +697,16 @@
 
           return react.createElement(
             "div",
-            { id: "dsh-codex-skin-row", style: ROW_STYLE },
+            { id: "dsh_skin_blossom-row", style: ROW_STYLE },
             react.createElement(
               "div",
               { style: TEXT_STYLE },
-              react.createElement("div", { style: TITLE_STYLE }, "Codex 皮肤（Rose Pine Dawn）"),
+              react.createElement("div", { style: TITLE_STYLE }, "dsh_skin_blossom（Rose Pine Dawn）"),
               react.createElement(
                 "div",
                 { style: DESC_STYLE },
                 hasSkin
-                  ? "当前主题：" + active + "。点击右侧在 Codex 与内置 dark 之间切换，或使用上方「外观」。"
+                  ? "当前主题：" + active + "。点击右侧在 Blossom 与内置 dark 之间切换，或使用上方「外观」。"
                   : "主题未注册：请检查插件是否已启用。"
               )
             ),
@@ -735,7 +735,7 @@
               colorScheme: "light",
               tokens: TOKENS_LIGHT
             });
-            var offOverride = ctx.theme.overrideTokens("dsh-codex-skin", pairs);
+            var offOverride = ctx.theme.overrideTokens("dsh_skin_blossom", pairs);
             installDeco();
             return function () {
               offOverride();
@@ -754,7 +754,7 @@
               var anchor = typeof document !== "undefined" ? document.getElementById(ANCHOR_ID) : null;
               if (anchor !== null) anchor.remove();
             };
-          }, "dsh-codex-skin: theme + deco");
+          }, "dsh_skin_blossom: theme + deco");
 
           // Opt-in by default, without depending on timing: the skin claims the
           // session as soon as any snapshot arrives where the durable preference
@@ -764,7 +764,7 @@
           // still gets the skin.
           ctx.effect(function () {
             var done = false;
-            var STICKY_KEY = "dsh-codex-skin:user-choice";
+            var STICKY_KEY = "dsh_skin_blossom:user-choice";
             var sticky = function () {
               try {
                 return sessionStorage.getItem(STICKY_KEY) !== null;
@@ -790,9 +790,9 @@
               try {
                 ctx.theme.setTheme(THEME_ID);
                 done = true;
-                console.info("[dsh-codex-skin] codex-theme-v1 active");
+                console.info("[dsh_skin_blossom] codex-theme-v1 active");
               } catch (error) {
-                console.warn("[dsh-codex-skin] activation failed, theme left untouched:", error);
+                console.warn("[dsh_skin_blossom] activation failed, theme left untouched:", error);
               }
             };
             settle();
@@ -800,22 +800,22 @@
             return function () {
               off();
             };
-          }, "dsh-codex-skin: default activation");
+          }, "dsh_skin_blossom: default activation");
 
           ctx.effect(function () {
             return ctx.locale.register(SETTINGS_NS, {
               zh: {
-                title: "Codex 皮肤（Rose Pine Dawn）",
+                title: "dsh_skin_blossom（Rose Pine Dawn）",
                 on: "已启用",
                 off: "点击启用"
               },
               en: {
-                title: "Codex skin (Rose Pine Dawn)",
+                title: "dsh_skin_blossom (Rose Pine Dawn)",
                 on: "Active",
                 off: "Enable"
               }
             });
-          }, "dsh-codex-skin: settings dictionaries");
+          }, "dsh_skin_blossom: settings dictionaries");
 
           ctx.slots.inject("settings.general.item", function () {
             return ctx.slots.register(
@@ -829,7 +829,7 @@
           });
         }
 
-        exports.name = "dsh-codex-skin";
+        exports.name = "dsh_skin_blossom";
         exports.inject = inject;
         exports.apply = apply;
         exports.THEME_ID = THEME_ID;
@@ -837,6 +837,6 @@
       }
     });
   } catch (err) {
-    console.warn("[dsh-codex-skin] client runtime error:", err);
+    console.warn("[dsh_skin_blossom] client runtime error:", err);
   }
 })();

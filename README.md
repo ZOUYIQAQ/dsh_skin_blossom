@@ -2,6 +2,8 @@
 
 为 **DeepSeek Harness (DSH) Web GUI** 做的第三方皮肤：rose-pine Dawn 暖调配色 + 侧栏装饰粒子，走"动漫 / 简洁 / 色彩干净"路线。
 
+仓库名 / 插件包名 / Loader 行 id / 客户端模块 id 统一为 `dsh_skin_blossom`；主题 id 仍为 `codex-theme-v1`。
+
 ## 它长什么样
 
 | 部分 | 做法 |
@@ -19,20 +21,20 @@
 
 ```bash
 # 1) 把本仓库放到插件目录，例如
-#    <DSH_HOME>/data/plugins/dsh-codex-skin
+#    <DSH_HOME>/data/plugins/dsh_skin_blossom
 
 # 2) 在该 profile 的 package.json 里加依赖
-#    "dsh-codex-skin": "file:../../plugins/dsh-codex-skin"
+#    "dsh_skin_blossom": "file:../../plugins/dsh_skin_blossom"
 
 # 3) 让它进入 profile bundles
-#    "bundles": [ ..., "dsh-codex-skin" ]
+#    "bundles": [ ..., "dsh_skin_blossom" ]
 ```
 
 激活方式有两条：
 - **默认**：插件在**首次运行**时自动接管（只在用户没有显式选择过主题时生效）；
 - **手动**：设置 → 通用 → 皮肤卡片点「启用」；点旁边即可切回 DSH 内置主题。
 
-用户一旦手动选择过，插件就不再自动接管（选择记在 `sessionStorage: dsh-codex-skin:user-choice`）。
+用户一旦手动选择过，插件就不再自动接管（选择记在 `sessionStorage: dsh_skin_blossom:user-choice`）。
 
 ## 配置
 
