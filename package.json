@@ -1,0 +1,42 @@
+{
+  "name": "dsh-codex-skin",
+  "version": "1.0.0",
+  "description": "codex-theme-v1 皮肤：把 Codex 深色配色（surface #0b0b0f / ink #e6e6e6 / accent #f9b98c）映射为 DSH 的 147 个 --dsw-* 设计 token，含 oscurange 代码高亮与超椭圆圆角。",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./client.js": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./theme-tokens.json": "./theme-tokens.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "scripts",
+    "cordis.patch.yml",
+    "theme-tokens.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node --check index.js && node --check client.js && node scripts/build.mjs"
+  },
+  "dsh": {
+    "id": "dsh-codex-skin",
+    "name": "Codex Skin",
+    "version": "1.0.0",
+    "permissions": "主题 token 覆盖（--dsw-* / --shiki-*），仅客户端",
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

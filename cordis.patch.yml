@@ -1,0 +1,5 @@
+// Local development row for the Codex skin. The dependency is declared in
+// profiles/web/package.json as a file: link, so `name` resolves there.
+- insert:
+    - id: dsh-codex-skin
+      name: dsh-codex-skin
