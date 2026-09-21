@@ -1,4 +1,4 @@
-/**
+﻿/**
  * peach-fizz — browser half.
  *
  * Applies `codex-theme-v1` to the DSH Web GUI through the supported extension
@@ -39,7 +39,6 @@
         // identifier written into the Codex theme config, and renaming it would break
         // configurations already pointing at it.
         var THEME_LABEL = "桃子气泡水";
-        var SETTINGS_NS = "settings.codex-skin";
         var STYLE_ID = "peach-fizz-style";
         var DECO_ID = "peach-fizz-deco";
         var ANCHOR_ID = "peach-fizz-anchor";
@@ -1115,125 +1114,19 @@
          * moves, so anything inside it moves with it for free.
          */
 
-        // ── Settings → General row ────────────────────────────────────────────
-        var ROW_STYLE = {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "12px",
-          padding: "4px 0"
-        };
-        var TEXT_STYLE = { display: "flex", flexDirection: "column", gap: "2px", minWidth: "0" };
-        var TITLE_STYLE = {
-          color: "var(--dsw-alias-label-primary)",
-          fontSize: "14px",
-          lineHeight: "22px"
-        };
-        var DESC_STYLE = {
-          color: "var(--dsw-alias-label-tertiary)",
-          fontSize: "12px",
-          lineHeight: "18px"
-        };
-        var PILL_STYLE = {
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          flex: "none",
-          padding: "3px 10px",
-          borderRadius: "999px",
-          cornerShape: "round",
-          border: "1px solid var(--dsw-alias-border-l2)",
-          background: "var(--dsw-alias-bg-module-platform)",
-          color: "var(--dsw-alias-label-secondary)",
-          fontFamily: "inherit",
-          fontSize: "12px",
-          lineHeight: "18px",
-          cursor: "pointer",
-          userSelect: "none"
-        };
-        var DOT_STYLE = {
-          width: "6px",
-          height: "6px",
-          borderRadius: "50%",
-          cornerShape: "round",
-          flex: "none"
-        };
-
-        /** Remember an explicit choice so default activation never overrides it. */
-        function markUserChoice() {
-          try {
-            sessionStorage.setItem("peach-fizz:user-choice", "1");
-          } catch (error) {
-            /* storage may be unavailable; the skin simply stays opt-out-by-choice-free */
-          }
-        }
-
-        function CodexSkinRow(props) {
-          var pair = react.useState(0);
-          var setTick = pair[1];
-
-          // Re-render on every theme change so the pill reflects the live theme.
-          react.useEffect(function () {
-            return props.ctx === undefined || props.ctx.on === undefined
-              ? undefined
-              : props.ctx.on("theme/change", function () {
-                  setTick(function (n) {
-                    return n + 1;
-                  });
-                });
-          }, []);
-
-          var theme = props.ctx !== undefined && props.ctx.theme !== undefined ? props.ctx.theme : null;
-          var snapshot = theme !== null ? theme.getTheme() : null;
-          var active = snapshot !== null ? snapshot.active.id : "unknown";
-          var hasSkin = snapshot !== null && snapshot.themes.some(function (t) {
-            return t.id === THEME_ID;
-          });
-          var on = active === THEME_ID;
-
-          var handleClick = function () {
-            if (theme === null) return;
-            markUserChoice();
-            try {
-              theme.setTheme(on ? "light" : THEME_ID);
-            } catch (error) {
-              console.warn("[peach-fizz] setTheme failed:", error);
-            }
-          };
-
-          var dot = Object.assign({}, DOT_STYLE, {
-            background: on ? "var(--dsw-alias-brand-primary)" : "var(--dsw-alias-label-dimmed)"
-          });
-
-          return react.createElement(
-            "div",
-            { id: "peach-fizz-row", style: ROW_STYLE },
-            react.createElement(
-              "div",
-              { style: TEXT_STYLE },
-              react.createElement("div", { style: TITLE_STYLE }, "桃子气泡水（Rose Pine Dawn）"),
-              react.createElement(
-                "div",
-                { style: DESC_STYLE },
-                hasSkin
-                  ? "当前主题：" + active + "。点击右侧在" + THEME_LABEL + "与内置 dark 之间切换，或使用上方「外观」。"
-                  : "主题未注册：请检查插件是否已启用；若是刚更新或改名过插件，重启 DSH 一次即可恢复。"
-              )
-            ),
-            react.createElement(
-              "button",
-              {
-                type: "button",
-                onClick: handleClick,
-                disabled: !hasSkin,
-                style: Object.assign({}, PILL_STYLE, { opacity: hasSkin ? 1 : 0.5 }),
-                title: "codex-theme-v1"
-              },
-              react.createElement("span", { style: dot }),
-              react.createElement("span", null, on ? "已启用" : "点击启用")
-            )
-          );
-        }
+        /**
+         * The Settings → General row was REMOVED on purpose (2026-09-21, user request).
+         *
+         * It duplicated the built-in 外观 (appearance) control: the theme is already
+         * selectable there, so an extra "桃子气泡水 · 点击启用" row under General was
+         * noise. The skin still activates on its own — see the default-activation
+         * effect in `apply` — and the user can still switch it from 外观.
+         *
+         * Deleted alongside the row: ROW_STYLE / TEXT_STYLE / TITLE_STYLE / DESC_STYLE /
+         * PILL_STYLE / DOT_STYLE, `markUserChoice`, `CodexSkinRow`, the `settings.codex-skin`
+         * locale dictionaries and the `settings.general.item` slot registration. Nothing
+         * else reads them.
+         */
 
         // ── plugin body ───────────────────────────────────────────────────────
         function apply(ctx) {
@@ -1331,32 +1224,6 @@
               off();
             };
           }, "peach-fizz: default activation");
-
-          ctx.effect(function () {
-            return ctx.locale.register(SETTINGS_NS, {
-              zh: {
-                title: "桃子气泡水（Rose Pine Dawn）",
-                on: "已启用",
-                off: "点击启用"
-              },
-              en: {
-                title: "Peach Fizz (Rose Pine Dawn)",
-                on: "Active",
-                off: "Enable"
-              }
-            });
-          }, "peach-fizz: settings dictionaries");
-
-          ctx.slots.inject("settings.general.item", function () {
-            return ctx.slots.register(
-              {
-                name: "settings.general.item",
-                id: "peach-fizz",
-                order: 12
-              },
-              CodexSkinRow
-            );
-          });
         }
 
         exports.name = "peach-fizz";

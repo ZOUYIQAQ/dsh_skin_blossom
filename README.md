@@ -87,18 +87,13 @@ pnpm install --prefer-offline
 | `SPIN_MIN_DEG_PER_S` / `SPIN_MAX_DEG_PER_S` | `39` / `51` | 粒子星自转角速度 |
 | `STAR_MOTION`（`scripts/build.mjs`） | 5 组 | 正文固定星的 `duration` / `phase` / `rock` |
 
-## 开发与门禁
+## 开发
 
 ```bash
-node scripts/build.mjs              # 生成 client.js：调色板 + 装饰样式 + 对比度审计
-node scripts/test-client.mjs        # 19 项运行时契约测试
-node scripts/report-deco-colors.mjs # 断言装饰样式表里只有暖色
-node scripts/report-palette.mjs     # 调色板合并报告
+node scripts/build.mjs   # 生成 client.js：调色板 + 装饰样式 + 对比度审计
 ```
 
-`build.mjs` 是唯一数据源：构建时会跑对比度审计（浅色 23 项 + 深色 23 项，全部必须通过）与 alias 全表比对（确保没有 token 掉回深色）；`report-deco-colors.mjs` 会扫出装饰样式表里所有 `#rrggbb`，凡蓝色分量明显高于红色的（冷色）直接判失败。
-
-**注意**：装饰样式表里的注释也会被暖色门禁扫到，所以不要在那里写颜色字面量。
+`build.mjs` 是唯一数据源，构建时会跑对比度审计（浅色 23 项 + 深色 23 项，全部必须通过）与 alias 全表比对（确保没有 token 掉回深色）。**改配色、光斑、气泡或固定星参数，都改它然后重新构建。**
 
 ## 目录
 
@@ -106,7 +101,7 @@ node scripts/report-palette.mjs     # 调色板合并报告
 client.template.js        手写的浏览器端源码（构建输入的模板）
 client.js                 构建产物（DSH 实际加载的文件）
 scripts/build.mjs         生成器：调色板推导、装饰样式、固定星运动、对比度审计
-scripts/test-client.mjs   运行时契约测试（19 项）
+scripts/set-market-note.mjs  写入市场简介（dsh-market 用自建 notes，不读 package.json）
 lib/tokens.generated.js   生成的 token 表
 theme-tokens.json         对比度审计报告
 cordis.patch.yml          插件在 DSH 里的注册形态（Loader 行 id/name = peach-fizz）
