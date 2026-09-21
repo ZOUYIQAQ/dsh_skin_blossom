@@ -11,9 +11,9 @@
 </p>
 
 <p align="center">
-  <img src="assets/preview-empty.jpg" alt="空会话界面：四角 halftone、暖色光斑与边缘粒子" width="100%">
+  <img src="assets/preview-empty.jpg" alt="界面装饰：四角 halftone、暖色光斑与边缘粒子" width="100%">
   <br>
-  <sub>空会话 —— 四角 halftone、三处暖色光斑、两侧粒子星</sub>
+  <sub>装饰层全貌 —— 四角 halftone、三处暖色光斑、两侧粒子星与缓慢上浮的气泡</sub>
 </p>
 
 ---
