@@ -1,10 +1,44 @@
-# dsh_skin_blossom
+# 桃子气泡水 · Peach Fizz（`peach-fizz`）
 
 把 **codex-theme-v1** 映射到 DSH Web GUI 的主题皮肤。
 
 主皮肤是 **rose-pine light**（`variant: "light"`，surface `#faf4ed` / ink `#575279` / accent `#d7827e`）；第一版导出的 **oscurange dark** 调色板保留为可选方案，两套 `--dsw-alias-*` 层都是完整的，因此从「外观」往任一方向切都不会落到不可读的组合。
 
+## 2026-09-21：按品牌名改名 + 装饰层现状盘点
+
+### 改名
+
+| 项 | 改前 | 改后 |
+|---|---|---|
+| 中文名 / 显示名（`dsh.name`） | `dsh_skin_blossom` | **桃子气泡水** |
+| 英文名 | `Blossom` | **Peach Fizz**（设置行英文标题 `Peach Fizz (Rose Pine Dawn)`） |
+| 包名 / `dsh.id` / Loader 行 id / 客户端模块 id | `dsh_skin_blossom` | **`peach-fizz`** |
+| 插件目录 | `~/.dsh/plugins/dsh_skin_blossom` | `~/.dsh/plugins/peach-fizz` |
+| profile 依赖键与 bundles 项 | `dsh_skin_blossom` | `peach-fizz` |
+| DOM id | `dsh_skin_blossom-style/-deco/-anchor/-row` | `peach-fizz-style/-deco/-anchor/-row` |
+| `sessionStorage` 键 | `dsh_skin_blossom:user-choice` | `peach-fizz:user-choice`（本条记忆会重置一次） |
+| 主题 id | `codex-theme-v1` | **不变**（改它会让既有主题配置失效） |
+| 样式命名空间 | `--dsh-codex-*` / `.dsh-codex-*` | **不变**（全量回归，不动） |
+
+⚠️ **改包名/id 后必须重启一次 DSH 进程**：客户端产物按 rev 寻址、路径写死在启动时的 Loader 行上，改名会让 HMR 轮询的旧路径失效（表现为“改了但界面没反应”）。重启后恢复正常，之后改 `client.js` 仍会 500ms 内自动热更。
+
+> 沿革：`dsh-codex-skin` →（按仓库名）`dsh_skin_blossom` →（按品牌名）**`peach-fizz` / 桃子气泡水**。
+> 仓库名仍是 `dsh_skin_blossom`（GitHub 远端未动），所以现在“仓库名 ≠ 包名”是有意为之。
+
+### 装饰层现状（自 2026-09-21 起）
+
+| 元素 | 状态 | 备注 |
+|---|---|---|
+| 四角 halftone `__wash` | 保留 | 15px 间距 / 2px 点 / `opacity .15`；颜色是 `currentColor`（历史遗留） |
+| 三处暖色光斑 `__panel` | 保留 | 放大到 1.5 倍；右下顶点 91%→95%、浓度 14/14/12、遮罩 86%→80% |
+| 浮动气泡粒子 | 新增 | 逐颗粒子引擎（非背景瓦片）：每颗抽定 x/尺寸/浓度/颜色/上升时长；**x 为三角分布**（中间多两边少）；出生 2.5–5s 淡入；`animationend` 回收重生 |
+| 正文固定星 ×5 | 改造 | **三条独立动画**解耦：摇摆（`rotate` ±38–60°）/ 缩放（`scale` 1→1.22）/ 明暗（`opacity` .42→.78），周期比 1 : 2.8 : 1.7、相位错开 |
+| 两侧粒子星 | 保留 | 每侧 6 颗；首批不再排队（原 0.3–6.3s 随机延迟 → 0）；显形段 0.09→0.045（加快一倍）；位置由 px 改百分比（不再受挂载时机与窗口缩放影响） |
+| 满铺点阵 `__dots` 两档点 | **已撤** | 原 28px 瓦片 + 玫瑰/暖金两档点 |
+| 网格线 | **已撤** | 试过 48px/5% → 32px/5% → 24px/3% |
+
 ## 2026-09-20：修复「完全不加载」+ 按仓库名统一改名
+
 
 | 变更 | 说明 |
 |---|---|

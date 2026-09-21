@@ -1,5 +1,5 @@
 # Codex 皮肤的本地开发注册项；依赖通过 file 链接声明，名称由 profile 的 node_modules 解析。
 # 该插件仅注册客户端皮肤，不修改 DSH 主程序文件。
 - insert:
-    - id: dsh_skin_blossom
-      name: dsh_skin_blossom
+    - id: peach-fizz
+      name: peach-fizz

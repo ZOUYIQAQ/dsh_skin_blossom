@@ -1,7 +1,7 @@
 {
-  "name": "dsh_skin_blossom",
+  "name": "peach-fizz",
   "version": "1.0.0",
-  "description": "codex-theme-v1 皮肤：把 Codex 深色配色（surface #0b0b0f / ink #e6e6e6 / accent #f9b98c）映射为 DSH 的 147 个 --dsw-* 设计 token，含 oscurange 代码高亮与超椭圆圆角。",
+  "description": "桃子气泡水（Peach Fizz）：DSH Web GUI 的暖色主题皮肤。以 rose-pine Dawn 为基调，把 195 个浅色 / 147 个深色 --dsw-* 设计 token 与 --shiki-* 代码高亮一并覆盖；装饰层包含四角 halftone、三处 1.5 倍暖色光斑、缓慢上浮的气泡粒子（逐颗生成、三角分布、出生淡入）以及正文区五颗固定星（摇摆/缩放/明暗三条独立动画）。所有装饰颜色限制在暖色族，构建时自动跑对比度与暖色门禁。",
   "private": true,
   "type": "module",
   "main": "./index.js",
@@ -27,8 +27,8 @@
     "check": "node --check index.js && node --check client.js && node scripts/build.mjs"
   },
   "dsh": {
-    "id": "dsh_skin_blossom",
-    "name": "dsh_skin_blossom",
+    "id": "peach-fizz",
+    "name": "桃子气泡水",
     "version": "1.0.0",
     "permissions": "主题 token 覆盖（--dsw-* / --shiki-*），仅客户端",
     "bundle": {

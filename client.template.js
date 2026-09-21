@@ -1,5 +1,5 @@
 /**
- * dsh_skin_blossom — browser half.
+ * peach-fizz — browser half.
  *
  * Applies `codex-theme-v1` to the DSH Web GUI through the supported extension
  * points only:
@@ -23,7 +23,7 @@
 (() => {
   try {
     window.__ModuleLoader__.load({
-      id: "dsh_skin_blossom",
+      id: "peach-fizz",
       factory: (require) => {
         var module = { exports: {} };
         var exports = module.exports;
@@ -35,14 +35,14 @@
         var inject = ["theme", "slots", "locale"];
 
         var THEME_ID = "codex-theme-v1";
-        // Theme name: Blossom. THEME_ID stays `codex-theme-v1` on purpose — it is the
+        // Theme name: 桃子气泡水（Peach Fizz）. THEME_ID stays `codex-theme-v1` on purpose — it is the
         // identifier written into the Codex theme config, and renaming it would break
         // configurations already pointing at it.
-        var THEME_LABEL = "Blossom";
+        var THEME_LABEL = "桃子气泡水";
         var SETTINGS_NS = "settings.codex-skin";
-        var STYLE_ID = "dsh_skin_blossom-style";
-        var DECO_ID = "dsh_skin_blossom-deco";
-        var ANCHOR_ID = "dsh_skin_blossom-anchor";
+        var STYLE_ID = "peach-fizz-style";
+        var DECO_ID = "peach-fizz-deco";
+        var ANCHOR_ID = "peach-fizz-anchor";
         /** Decoration layer children, in paint order; all pure CSS shapes. */
         var DECO_PARTS = [
           // Dots first, then colour, then small marks. Nothing is anchored to the
@@ -706,7 +706,7 @@
           if (document.getElementById(STYLE_ID) === null) {
             var tag = document.createElement("style");
             tag.id = STYLE_ID;
-            tag.dataset.plugin = "dsh_skin_blossom";
+            tag.dataset.plugin = "peach-fizz";
             tag.textContent = DECO_CSS;
             document.head.appendChild(tag);
           }
@@ -812,7 +812,7 @@
         /** Remember an explicit choice so default activation never overrides it. */
         function markUserChoice() {
           try {
-            sessionStorage.setItem("dsh_skin_blossom:user-choice", "1");
+            sessionStorage.setItem("peach-fizz:user-choice", "1");
           } catch (error) {
             /* storage may be unavailable; the skin simply stays opt-out-by-choice-free */
           }
@@ -847,7 +847,7 @@
             try {
               theme.setTheme(on ? "light" : THEME_ID);
             } catch (error) {
-              console.warn("[dsh_skin_blossom] setTheme failed:", error);
+              console.warn("[peach-fizz] setTheme failed:", error);
             }
           };
 
@@ -857,17 +857,17 @@
 
           return react.createElement(
             "div",
-            { id: "dsh_skin_blossom-row", style: ROW_STYLE },
+            { id: "peach-fizz-row", style: ROW_STYLE },
             react.createElement(
               "div",
               { style: TEXT_STYLE },
-              react.createElement("div", { style: TITLE_STYLE }, "dsh_skin_blossom（Rose Pine Dawn）"),
+              react.createElement("div", { style: TITLE_STYLE }, "桃子气泡水（Rose Pine Dawn）"),
               react.createElement(
                 "div",
                 { style: DESC_STYLE },
                 hasSkin
-                  ? "当前主题：" + active + "。点击右侧在 Blossom 与内置 dark 之间切换，或使用上方「外观」。"
-                  : "主题未注册：请检查插件是否已启用。"
+                  ? "当前主题：" + active + "。点击右侧在" + THEME_LABEL + "与内置 dark 之间切换，或使用上方「外观」。"
+                  : "主题未注册：请检查插件是否已启用；若是刚更新或改名过插件，重启 DSH 一次即可恢复。"
               )
             ),
             react.createElement(
@@ -890,16 +890,35 @@
           var pairs = tokenPairs(TOKENS_LIGHT, TOKENS_DARK);
 
           ctx.effect(function () {
-            var offTheme = ctx.theme.register({
-              id: THEME_ID,
-              colorScheme: "light",
-              tokens: TOKENS_LIGHT
-            });
-            var offOverride = ctx.theme.overrideTokens("dsh_skin_blossom", pairs);
+            /**
+             * 主题注册要容错（2026-09-21 实测踩到）：
+             *
+             * DSH 的主题注册表对重复 id 是**直接抛错**的
+             * （`theme "${id}" is already registered`，见 @deepseek-ai/dsh-client-ui-theme 的
+             * `ThemeRegistry.register`）。插件改名/换行 id 之后，旧实例那一行并不会被当成
+             * “同一条被重建”，它注册的 id 还留在表里 —— 此时新实例一注册就抛，而抛出点在
+             * 本 effect 内部，会把后面的 overrideTokens 与 installDeco 一起带下去，
+             * 表现就是「设置里那张卡片说主题未注册，装饰层也没了」。
+             *
+             * 所以这里把注册单独 try/catch：注册失败只是少了「外观」里那一项可选主题，
+             * 调色板覆盖（overrideTokens）与装饰层照常生效，不至于整个皮肤失效。
+             * 彻底恢复「外观」里的可选项，重启一次 DSH 进程即可（旧行随之消失）。
+             */
+            var offTheme = null;
+            try {
+              offTheme = ctx.theme.register({
+                id: THEME_ID,
+                colorScheme: "light",
+                tokens: TOKENS_LIGHT
+              });
+            } catch (error) {
+              console.warn("[peach-fizz] theme register skipped:", error);
+            }
+            var offOverride = ctx.theme.overrideTokens("peach-fizz", pairs);
             installDeco();
             return function () {
               offOverride();
-              offTheme();
+              if (typeof offTheme === "function") offTheme();
               var tag = typeof document !== "undefined" ? document.getElementById(STYLE_ID) : null;
               if (tag !== null) tag.remove();
               var layer = typeof document !== "undefined" ? document.getElementById(DECO_ID) : null;
@@ -915,7 +934,7 @@
               var anchor = typeof document !== "undefined" ? document.getElementById(ANCHOR_ID) : null;
               if (anchor !== null) anchor.remove();
             };
-          }, "dsh_skin_blossom: theme + deco");
+          }, "peach-fizz: theme + deco");
 
           // Opt-in by default, without depending on timing: the skin claims the
           // session as soon as any snapshot arrives where the durable preference
@@ -925,7 +944,7 @@
           // still gets the skin.
           ctx.effect(function () {
             var done = false;
-            var STICKY_KEY = "dsh_skin_blossom:user-choice";
+            var STICKY_KEY = "peach-fizz:user-choice";
             var sticky = function () {
               try {
                 return sessionStorage.getItem(STICKY_KEY) !== null;
@@ -951,9 +970,9 @@
               try {
                 ctx.theme.setTheme(THEME_ID);
                 done = true;
-                console.info("[dsh_skin_blossom] codex-theme-v1 active");
+                console.info("[peach-fizz] codex-theme-v1 active");
               } catch (error) {
-                console.warn("[dsh_skin_blossom] activation failed, theme left untouched:", error);
+                console.warn("[peach-fizz] activation failed, theme left untouched:", error);
               }
             };
             settle();
@@ -961,28 +980,28 @@
             return function () {
               off();
             };
-          }, "dsh_skin_blossom: default activation");
+          }, "peach-fizz: default activation");
 
           ctx.effect(function () {
             return ctx.locale.register(SETTINGS_NS, {
               zh: {
-                title: "dsh_skin_blossom（Rose Pine Dawn）",
+                title: "桃子气泡水（Rose Pine Dawn）",
                 on: "已启用",
                 off: "点击启用"
               },
               en: {
-                title: "dsh_skin_blossom (Rose Pine Dawn)",
+                title: "Peach Fizz (Rose Pine Dawn)",
                 on: "Active",
                 off: "Enable"
               }
             });
-          }, "dsh_skin_blossom: settings dictionaries");
+          }, "peach-fizz: settings dictionaries");
 
           ctx.slots.inject("settings.general.item", function () {
             return ctx.slots.register(
               {
                 name: "settings.general.item",
-                id: "codex-skin",
+                id: "peach-fizz",
                 order: 12
               },
               CodexSkinRow
@@ -990,7 +1009,7 @@
           });
         }
 
-        exports.name = "dsh_skin_blossom";
+        exports.name = "peach-fizz";
         exports.inject = inject;
         exports.apply = apply;
         exports.THEME_ID = THEME_ID;
@@ -998,6 +1017,6 @@
       }
     });
   } catch (err) {
-    console.warn("[dsh_skin_blossom] client runtime error:", err);
+    console.warn("[peach-fizz] client runtime error:", err);
   }
 })();
