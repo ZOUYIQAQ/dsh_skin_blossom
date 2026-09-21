@@ -134,6 +134,8 @@
         var SPIN_MAX_DEG_PER_S = 51;
         /** One shared scheduler: `stopped` gates every pending spawn. */
         var particles = { stopped: true, timers: [] };
+        /** 浮动泡泡引擎的调度状态（与星星引擎各自独立）。 */
+        var bubbles = { stopped: true };
 
         function roll(min, max) {
           return min + Math.random() * (max - min);
@@ -328,6 +330,117 @@
             particles.timers = [];
             var live = layer.querySelectorAll(".dsh-codex-particle");
             for (var j = 0; j < live.length; j += 1) live[j].remove();
+          };
+        }
+
+        // ── 浮动泡泡（2026-09-21）──────────────────────────────────────────────
+        /**
+         * 泡泡引擎：每颗泡泡在「生成」的那一刻抽定 x、尺寸、浓度、颜色、上升时长，
+         * 从面板底部长到顶边外，动画结束（animationend）即销毁并立刻重生一颗 ——
+         * 重生时全部重新抽，所以每颗泡泡每次出现的位置都不一样。
+         *
+         * x 的概率分布按用户要求做成「统计学上中间多、两边少，但两边也要多少有一点」：
+         * 取 BUBBLE_X_SAMPLES 个均匀随机数求平均 —— 2 个是三角分布（密度在中点最高、
+         * 两端趋近 0 但可达），3 个更向中间集中，=1 就退回均匀分布。
+         *
+         * 三条硬约束（都是踩过的坑）：
+         *   1) 回收时机由动画事件给出，不用定时器复刻时长；
+         *   2) 泡泡挂在传进来的容器里，装饰层的直接子节点数保持 19（契约测试断言过）；
+         *   3) 整个启动过程包 try/catch —— 装饰层不允许因为泡泡的异常而整体装不上。
+         */
+        var BUBBLE_COUNT = 20;
+        /**
+         * 尺寸改成整数、并抬上下限（2026-09-21 用户反馈「泡泡看起来不是圆的」）。
+         *
+         * 原因是锐边 + 尺寸过小 + 亚像素定位：3px 的实心圆在屏幕上只占 6 个物理像素
+         * （DPR 2），再叠上 left 的百分比小数定位，栅格化后边缘会退化成方块感。
+         * 修法：尺寸取整（Math.round）+ 下限抬到 4px 且只用偶数尺寸，让圆落在像素格上。
+         */
+        var BUBBLE_MIN_PX = 4;
+        var BUBBLE_MAX_PX = 10;
+        var BUBBLE_MIN_OPACITY = 0.1;
+        var BUBBLE_MAX_OPACITY = 0.3;
+        var BUBBLE_MIN_RISE_S = 45;
+        var BUBBLE_MAX_RISE_S = 95;
+        /** 取几个均匀随机数求平均决定 x：2 = 三角分布（默认），3 = 更集中，1 = 均匀。 */
+        var BUBBLE_X_SAMPLES = 2;
+        /** 泡泡颜色：全部来自暖色调色板，避免出现冷色。 */
+        var BUBBLE_COLOURS = ["#b1524e", "#d7827e", "#d9a05b", "#e8bfba"];
+
+        /**
+         * 泡泡的「正圆」是画出来的，不是靠 border-radius 切出来的。
+         *
+         * 2026-09-21 用户反馈「泡泡看起来不是圆的」：先前用的是「正方 div + border-radius:50%」，
+         * 这条路依赖盒模型与宿主页面的圆角规则 —— 任何一条外部 CSS 改掉 border-radius，
+         * 形状就退化成方块。现在改成 SVG 圆形当 background-image：几何由 SVG 自己保证，
+         * 元素盒子是什么形状都不影响观感；颜色按泡泡各自的色值烘进 data URI。
+         */
+        var BUBBLE_FILLS = {};
+        function bubbleFill(hex) {
+          if (BUBBLE_FILLS[hex] === undefined) {
+            BUBBLE_FILLS[hex] =
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23" +
+              hex.slice(1) +
+              "'/%3E%3C/svg%3E\")";
+          }
+          return BUBBLE_FILLS[hex];
+        }
+
+        /** 抽一个 x（百分比）：中间多、两边少，两端仍可达。 */
+        function rollBubbleX() {
+          var n = Math.max(1, BUBBLE_X_SAMPLES);
+          var sum = 0;
+          for (var i = 0; i < n; i += 1) sum += Math.random();
+          return (sum / n) * 100;
+        }
+
+        /** 造一颗泡泡；动画结束后销毁并重新生成（x 重新抽）。 */
+        function spawnBubble(host) {
+          if (bubbles.stopped) return;
+          // 偶数尺寸：直径落在整数像素上时，border-radius:50% 的圆边缘才不会被栅格化切方。
+          var size = 2 * Math.round(roll(BUBBLE_MIN_PX, BUBBLE_MAX_PX) / 2);
+          var duration = roll(BUBBLE_MIN_RISE_S, BUBBLE_MAX_RISE_S);
+          // 负延迟：首屏的泡泡就散布在整条上升路径上，而不是全挤在底边一起出发。
+          var offset = Math.random() * duration;
+          var el = document.createElement("div");
+          el.className = "dsh-codex-bubble";
+          el.style.width = size.toFixed(1) + "px";
+          el.style.height = size.toFixed(1) + "px";
+          el.style.left = rollBubbleX().toFixed(2) + "%";
+          el.style.opacity = roll(BUBBLE_MIN_OPACITY, BUBBLE_MAX_OPACITY).toFixed(2);
+          var colour = BUBBLE_COLOURS[Math.floor(Math.random() * BUBBLE_COLOURS.length)];
+          el.style.color = colour;                      // 兜底色：背景图万一不生效也不至于透明
+          el.style.backgroundImage = bubbleFill(colour); // 真正的正圆（SVG circle）
+          el.style.animationDuration = duration.toFixed(1) + "s";
+          el.style.animationDelay = (-offset).toFixed(1) + "s";
+          var recycle = function () {
+            if (bubbles.stopped) return;
+            if (typeof el.remove === "function") el.remove();
+            spawnBubble(host);
+          };
+          if (typeof el.addEventListener === "function") el.addEventListener("animationend", recycle);
+          host.appendChild(el);
+        }
+
+        /** 铺满初始数量并返回清理函数。 */
+        function startBubbles(host) {
+          var noop = function () {};
+          if (host === null || host === undefined || typeof host.appendChild !== "function") return noop;
+          bubbles.stopped = false;
+          // 尊重无障碍设置：开了「减弱动态效果」就不生成泡泡（静止的半透明点会像脏点）。
+          var reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          if (reduced) return noop;
+          try {
+            for (var i = 0; i < BUBBLE_COUNT; i += 1) spawnBubble(host);
+          } catch (error) {
+            // 泡泡是纯装饰：这里出错就放弃它，绝不让异常冒上去把整个装饰层拖垮。
+            bubbles.stopped = true;
+            return noop;
+          }
+          return function () {
+            bubbles.stopped = true;
+            var live = host.querySelectorAll(".dsh-codex-bubble");
+            for (var k = 0; k < live.length; k += 1) live[k].remove();
           };
         }
 
@@ -559,10 +672,13 @@
             layer.id = DECO_ID;
             layer.className = "dsh-codex-deco";
             layer.setAttribute("aria-hidden", "true");
+            // 泡泡容器按引用记下来（引擎不做 DOM 查询，测试假 DOM 不支持查询）。
+            var bubbleHost = null;
             for (var i = 0; i < DECO_PARTS.length; i += 1) {
               var part = document.createElement("div");
               part.className = DECO_PARTS[i];
               layer.appendChild(part);
+              if (DECO_PARTS[i].indexOf("dsh-codex-deco__dots") >= 0) bubbleHost = part;
             }
             // Provisional parent: the shell may not have mounted yet, and the
             // mountLayer pass below moves it into the conversation column as soon
@@ -571,6 +687,7 @@
             // Started once, on the element that outlives every re-mount: the
             // disposer rides on the node so teardown can stop the engine.
             layer.__stopParticles = startParticles(layer);
+            layer.__stopBubbles = startBubbles(bubbleHost);
           }
           mountLayer();
           // The shell mounts asynchronously, so keep trying for a while rather
@@ -748,6 +865,7 @@
                 // live nodes, and letting it run into a removed layer would leak
                 // both the timers and the elements.
                 if (typeof layer.__stopParticles === "function") layer.__stopParticles();
+                if (typeof layer.__stopBubbles === "function") layer.__stopBubbles();
                 if (layer.__runsTimer !== undefined) clearInterval(layer.__runsTimer);
                 layer.remove();
               }

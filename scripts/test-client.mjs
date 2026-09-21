@@ -32,6 +32,10 @@ const makeNode = () => {
     id: "",
     className: "",
     dataset: {},
+    // 真节点必有内联样式袋与事件接口：泡泡引擎生成时写 el.style、靠 animationend 回收。
+    style: {},
+    addEventListener() {},
+    removeEventListener() {},
     textContent: "",
     children: [],
     attributes: {},

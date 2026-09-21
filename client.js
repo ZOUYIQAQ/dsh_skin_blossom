@@ -140,6 +140,8 @@
         var SPIN_MAX_DEG_PER_S = 51;
         /** One shared scheduler: `stopped` gates every pending spawn. */
         var particles = { stopped: true, timers: [] };
+        /** 浮动泡泡引擎的调度状态（与星星引擎各自独立）。 */
+        var bubbles = { stopped: true };
 
         function roll(min, max) {
           return min + Math.random() * (max - min);
@@ -334,6 +336,117 @@
             particles.timers = [];
             var live = layer.querySelectorAll(".dsh-codex-particle");
             for (var j = 0; j < live.length; j += 1) live[j].remove();
+          };
+        }
+
+        // ── 浮动泡泡（2026-09-21）──────────────────────────────────────────────
+        /**
+         * 泡泡引擎：每颗泡泡在「生成」的那一刻抽定 x、尺寸、浓度、颜色、上升时长，
+         * 从面板底部长到顶边外，动画结束（animationend）即销毁并立刻重生一颗 ——
+         * 重生时全部重新抽，所以每颗泡泡每次出现的位置都不一样。
+         *
+         * x 的概率分布按用户要求做成「统计学上中间多、两边少，但两边也要多少有一点」：
+         * 取 BUBBLE_X_SAMPLES 个均匀随机数求平均 —— 2 个是三角分布（密度在中点最高、
+         * 两端趋近 0 但可达），3 个更向中间集中，=1 就退回均匀分布。
+         *
+         * 三条硬约束（都是踩过的坑）：
+         *   1) 回收时机由动画事件给出，不用定时器复刻时长；
+         *   2) 泡泡挂在传进来的容器里，装饰层的直接子节点数保持 19（契约测试断言过）；
+         *   3) 整个启动过程包 try/catch —— 装饰层不允许因为泡泡的异常而整体装不上。
+         */
+        var BUBBLE_COUNT = 20;
+        /**
+         * 尺寸改成整数、并抬上下限（2026-09-21 用户反馈「泡泡看起来不是圆的」）。
+         *
+         * 原因是锐边 + 尺寸过小 + 亚像素定位：3px 的实心圆在屏幕上只占 6 个物理像素
+         * （DPR 2），再叠上 left 的百分比小数定位，栅格化后边缘会退化成方块感。
+         * 修法：尺寸取整（Math.round）+ 下限抬到 4px 且只用偶数尺寸，让圆落在像素格上。
+         */
+        var BUBBLE_MIN_PX = 4;
+        var BUBBLE_MAX_PX = 10;
+        var BUBBLE_MIN_OPACITY = 0.1;
+        var BUBBLE_MAX_OPACITY = 0.3;
+        var BUBBLE_MIN_RISE_S = 45;
+        var BUBBLE_MAX_RISE_S = 95;
+        /** 取几个均匀随机数求平均决定 x：2 = 三角分布（默认），3 = 更集中，1 = 均匀。 */
+        var BUBBLE_X_SAMPLES = 2;
+        /** 泡泡颜色：全部来自暖色调色板，避免出现冷色。 */
+        var BUBBLE_COLOURS = ["#b1524e", "#d7827e", "#d9a05b", "#e8bfba"];
+
+        /**
+         * 泡泡的「正圆」是画出来的，不是靠 border-radius 切出来的。
+         *
+         * 2026-09-21 用户反馈「泡泡看起来不是圆的」：先前用的是「正方 div + border-radius:50%」，
+         * 这条路依赖盒模型与宿主页面的圆角规则 —— 任何一条外部 CSS 改掉 border-radius，
+         * 形状就退化成方块。现在改成 SVG 圆形当 background-image：几何由 SVG 自己保证，
+         * 元素盒子是什么形状都不影响观感；颜色按泡泡各自的色值烘进 data URI。
+         */
+        var BUBBLE_FILLS = {};
+        function bubbleFill(hex) {
+          if (BUBBLE_FILLS[hex] === undefined) {
+            BUBBLE_FILLS[hex] =
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23" +
+              hex.slice(1) +
+              "'/%3E%3C/svg%3E\")";
+          }
+          return BUBBLE_FILLS[hex];
+        }
+
+        /** 抽一个 x（百分比）：中间多、两边少，两端仍可达。 */
+        function rollBubbleX() {
+          var n = Math.max(1, BUBBLE_X_SAMPLES);
+          var sum = 0;
+          for (var i = 0; i < n; i += 1) sum += Math.random();
+          return (sum / n) * 100;
+        }
+
+        /** 造一颗泡泡；动画结束后销毁并重新生成（x 重新抽）。 */
+        function spawnBubble(host) {
+          if (bubbles.stopped) return;
+          // 偶数尺寸：直径落在整数像素上时，border-radius:50% 的圆边缘才不会被栅格化切方。
+          var size = 2 * Math.round(roll(BUBBLE_MIN_PX, BUBBLE_MAX_PX) / 2);
+          var duration = roll(BUBBLE_MIN_RISE_S, BUBBLE_MAX_RISE_S);
+          // 负延迟：首屏的泡泡就散布在整条上升路径上，而不是全挤在底边一起出发。
+          var offset = Math.random() * duration;
+          var el = document.createElement("div");
+          el.className = "dsh-codex-bubble";
+          el.style.width = size.toFixed(1) + "px";
+          el.style.height = size.toFixed(1) + "px";
+          el.style.left = rollBubbleX().toFixed(2) + "%";
+          el.style.opacity = roll(BUBBLE_MIN_OPACITY, BUBBLE_MAX_OPACITY).toFixed(2);
+          var colour = BUBBLE_COLOURS[Math.floor(Math.random() * BUBBLE_COLOURS.length)];
+          el.style.color = colour;                      // 兜底色：背景图万一不生效也不至于透明
+          el.style.backgroundImage = bubbleFill(colour); // 真正的正圆（SVG circle）
+          el.style.animationDuration = duration.toFixed(1) + "s";
+          el.style.animationDelay = (-offset).toFixed(1) + "s";
+          var recycle = function () {
+            if (bubbles.stopped) return;
+            if (typeof el.remove === "function") el.remove();
+            spawnBubble(host);
+          };
+          if (typeof el.addEventListener === "function") el.addEventListener("animationend", recycle);
+          host.appendChild(el);
+        }
+
+        /** 铺满初始数量并返回清理函数。 */
+        function startBubbles(host) {
+          var noop = function () {};
+          if (host === null || host === undefined || typeof host.appendChild !== "function") return noop;
+          bubbles.stopped = false;
+          // 尊重无障碍设置：开了「减弱动态效果」就不生成泡泡（静止的半透明点会像脏点）。
+          var reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          if (reduced) return noop;
+          try {
+            for (var i = 0; i < BUBBLE_COUNT; i += 1) spawnBubble(host);
+          } catch (error) {
+            // 泡泡是纯装饰：这里出错就放弃它，绝不让异常冒上去把整个装饰层拖垮。
+            bubbles.stopped = true;
+            return noop;
+          }
+          return function () {
+            bubbles.stopped = true;
+            var live = host.querySelectorAll(".dsh-codex-bubble");
+            for (var k = 0; k < live.length; k += 1) live[k].remove();
           };
         }
 
@@ -701,7 +814,7 @@
         }
 
         /** Decoration stylesheet, generated from the palette by scripts/build.mjs. */
-        var DECO_CSS = "/* page colour moves to <html>: a negative-z layer paints under an in-flow\n   ancestor's background, so the body box must stop painting one. */\nhtml{background:var(--dsw-alias-bg-base)}\nbody{background-color:transparent}\n\n/* The layer lives INSIDE the conversation column (see mountLayer in the\n   client): `absolute; inset:0` fills that column and `z-index:-1` puts it\n   above the column's own background but below its content. The column is\n   transparent and `_frame` is the element painting the page colour, which is\n   why -1 is correct here. The client gives the panel `position:relative` (with\n   `z-index:auto`, so no stacking context) because the panel ships with no\n   positioning of its own — without that every absolute descendant resolved\n   against an ancestor and the layer came out at the window's left edge.\n   Parented there, the decoration is squeezed by the sidebar exactly as the\n   conversation is. */\n.dsh-codex-deco{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}\n\n/* ── 试做 19：微粒上浮（2026-09-21，用户确认「看起来不错」的那一版）─────────\n   300px 瓦片里 12 颗柔边微粒（尺寸 1.0–2.0px、浓度 22%–38% 各不相同），\n   整层用 transform 在 60s 内匀速上移一个瓦片高度后无缝循环：只用 transform\n   （走合成器），linear + infinite 匀速上浮，到顶无缝接回；已加\n   prefers-reduced-motion 关闭动画。\n   撤销记录：其后的「横向遮罩版」和「JS 逐颗粒子引擎版」都已回退 ——\n   粒子引擎那一版导致背景装饰整体加载失败（真机故障，测试假 DOM 没暴露）。\n   历史留档：02→18 全部已轮到本方案。 */\n.dsh-codex-deco__dots{position:absolute;inset:0;overflow:hidden;pointer-events:none}\n.dsh-codex-deco__dots::before{content:'';position:absolute;inset:-40% 0;\n  background-image:\n    radial-gradient(1.6px 1.6px at 30px 40px,   color-mix(in srgb, #b1524e 35%, transparent), transparent),\n    radial-gradient(1.2px 1.2px at 95px 130px,  color-mix(in srgb, #d9a05b 30%, transparent), transparent),\n    radial-gradient(1.8px 1.8px at 150px 75px,  color-mix(in srgb, #b1524e 28%, transparent), transparent),\n    radial-gradient(1.2px 1.2px at 215px 165px, color-mix(in srgb, #d9a05b 32%, transparent), transparent),\n    radial-gradient(1.5px 1.5px at 265px 225px, color-mix(in srgb, #b1524e 25%, transparent), transparent),\n    radial-gradient(1.1px 1.1px at 55px 255px,  color-mix(in srgb, #d9a05b 27%, transparent), transparent),\n    radial-gradient(1.3px 1.3px at 125px 25px,  color-mix(in srgb, #b1524e 22%, transparent), transparent),\n    radial-gradient(2.0px 2.0px at 180px 235px, color-mix(in srgb, #b1524e 38%, transparent), transparent),\n    radial-gradient(1.0px 1.0px at 250px 105px, color-mix(in srgb, #d9a05b 34%, transparent), transparent),\n    radial-gradient(1.4px 1.4px at 25px 175px,  color-mix(in srgb, #b1524e 30%, transparent), transparent),\n    radial-gradient(1.2px 1.2px at 280px 295px, color-mix(in srgb, #d9a05b 24%, transparent), transparent),\n    radial-gradient(1.6px 1.6px at 155px 195px, color-mix(in srgb, #b1524e 33%, transparent), transparent);\n  background-size:300px 300px;\n  animation:dsh-codex-float 60s linear infinite}\n@keyframes dsh-codex-float{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-300px,0)}}\n@media (prefers-reduced-motion: reduce){.dsh-codex-deco__dots::before{animation:none!important}}\n/* The composer seat is plain: see the note further down. */\n\n/* Halftone washes: four corners, so every edge of the window carries a mark.\n   2026-09-21 用户明确要求保留这一层（关掉的只有全屏铺满的主点阵）。\n   颜色仍是历史遗留的 currentColor：元素没设颜色，会继承正文色（冷紫灰），\n   暖色门禁只扫十六进制字面量、扫不到 currentColor，故一直没被发现。\n   要改暖：给下面这条规则加显式 color，取值用 DECO 里的暖色即可。 */\n.dsh-codex-deco__wash{position:absolute;width:380px;height:380px;opacity:.15;\nbackground-image:radial-gradient(currentColor 2px, transparent 2.3px);background-size:15px 15px;\nmask-image:radial-gradient(closest-side, #000, transparent);\n-webkit-mask-image:radial-gradient(closest-side, #000, transparent)}\n.dsh-codex-deco__wash--tl{top:-170px;left:-170px}\n.dsh-codex-deco__wash--tr{top:-170px;right:-170px}\n.dsh-codex-deco__wash--bl{bottom:-170px;left:-170px}\n.dsh-codex-deco__wash--br{bottom:-170px;right:-170px}\n\n/* Cross-stars: three per corner, staggered in size and colour so a corner\n   cluster reads as intentional rather than as one stray mark. */\n/* The spin layer inside a side star: it exists so the constant rotation is a\n   separate animation from the lifetime curve (animation-name cannot stack, and\n   one easing over both is what made the spin speed up in bursts). */\n.dsh-codex-deco__star__spin{position:absolute;inset:0;background:currentColor}\n.dsh-codex-deco__star{position:absolute;background:currentColor;\nclip-path:polygon(46% 0,54% 0,54% 46%,100% 46%,100% 54%,54% 54%,54% 100%,46% 100%,46% 54%,0 54%,0 46%,46% 46%)}\n.dsh-codex-deco__star--lg{width:26px;height:26px}\n.dsh-codex-deco__star--md{width:15px;height:15px;opacity:.72}\n.dsh-codex-deco__star--sm{width:9px;height:9px;opacity:.55}\n.dsh-codex-deco__star--rose{color:#b1524e}\n.dsh-codex-deco__star--rose-soft{color:#d7827e}\n.dsh-codex-deco__star--ochre{color:undefined}\n.dsh-codex-deco__star--breathe{animation:dsh-codex-breathe 7s ease-in-out infinite}\n.dsh-codex-deco__star--breathe-slow{animation:dsh-codex-breathe 11s ease-in-out infinite}\n@keyframes dsh-codex-breathe{0%,100%{transform:scale(1) rotate(0deg);opacity:.42}50%{transform:scale(1.22) rotate(45deg);opacity:.78}}\n\n/* Scatter positions, in viewport percentages (STAR_FIELD above): two columns\n   down the flanks plus a few marks around the composer band. */\n.dsh-codex-deco__star--t1{top:11.3%;left:31.0%}\n.dsh-codex-deco__star--t2{top:16.9%;left:47.0%}\n.dsh-codex-deco__star--t3{top:15.1%;left:63.0%}\n.dsh-codex-deco__star--t4{bottom:12.6%;left:39.0%}\n.dsh-codex-deco__star--t5{bottom:10.2%;left:59.0%}\n\n/* Twinkle loop for the flank marks: hold, shrink out, reappear a few percent\n   away (still inside the flank band), grow back, then drift home while fading.\n   Only transform and opacity animate, so this rides the compositor. The marks\n   over the reading column are deliberately NOT in this loop. */\n.dsh-codex-particle-zone{position:absolute;top:0;bottom:0;width:17%;pointer-events:none}\n.dsh-codex-particle-zone--left{left:0}\n.dsh-codex-particle-zone--right{right:0}\n.dsh-codex-particle{position:absolute}\n.dsh-codex-particle__spin{position:absolute;inset:0;\n  clip-path:polygon(46% 0,54% 0,54% 46%,100% 46%,100% 54%,54% 54%,54% 100%,46% 100%,46% 54%,0 54%,0 46%,46% 46%);transform-origin:50% 50%}\n\n/* Three accent blooms arranged as the VERTICES OF A TRIANGLE (left mid-height,\n   right-top, right-bottom), kept OUT IN THE SIDE MARGINS so they never compete\n   with the conversation text. Measured on the live panel: the text column spans\n   29.4%–70.2% of the panel, leaving ~30% of clear margin on each side, and the\n   500px bloom fits that margin comfortably. An earlier pass put the vertices at\n   30% / 72%, i.e. exactly on the text edges. Percentages are of the LAYER (the\n   conversation panel), so the whole triangle moves with it when the sidebar\n   opens. Colours are the bright warm values: at 16% over cream the darker ochre\n   rung blended into a brown that read as a bruise. */\n/* 光斑尺寸：2026-09-21 按用户要求整体放大到 1.5 倍。\n   原尺寸 min(24vw,440px) × min(46vh,460px)，现为 min(36vw,660px) × min(69vh,690px)；\n   顶点位置（left/top 百分比）与 16%/14% 的浓度都没动，所以只是「变大」，不是「变浓」。\n   注意：遮罩仍是 closest-side + transparent 86%，会随尺寸等比放大；\n   放大后右侧两颗会侵入正文列（正文列约占面板 29.4%–70.2%），这是本尺寸下的必然结果。 */\n.dsh-codex-deco__panel{position:absolute;transform:translate(-50%,-50%);\n  width:min(36vw,660px);height:min(69vh,690px);\n  mask-image:radial-gradient(closest-side, #000, transparent 80%);\n  -webkit-mask-image:radial-gradient(closest-side, #000, transparent 80%)}\n.dsh-codex-deco__panel--left{left:2%;top:44%;\n  background:radial-gradient(closest-side, color-mix(in srgb, #b1524e 14%, transparent), transparent)}\n.dsh-codex-deco__panel--right{left:98%;top:27%;\n  background:radial-gradient(closest-side, color-mix(in srgb, #d9a05b 14%, transparent), transparent)}\n.dsh-codex-deco__panel--mid{left:95%;top:73%;\n  background:radial-gradient(closest-side, color-mix(in srgb, #d7827e 12%, transparent), transparent)}\n\n/* Nothing is anchored to the composer. Two earlier attempts wrapped it: a pair\n   of dashed brackets, then a page-coloured 'clean plate' underneath to blank\n   the texture. Both read as a floating decoration that did not belong — the\n   user's own words were 'just delete it'. The seat is therefore plain, and the\n   dots simply run behind it exactly as they do everywhere else. Colour stays on\n   the flanks and never over the text column. */\n\n/* One faint outline ring per corner, well inside the viewport. */\n.dsh-codex-deco__ring{position:absolute;width:34px;height:34px;opacity:.3;\nbackground:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23b1524e' stroke-width='1.5'/%3E%3C/svg%3E\") center/contain no-repeat}\n.dsh-codex-deco__ring--tl{top:14%;left:5%}\n.dsh-codex-deco__ring--tr{top:14%;right:5%}\n.dsh-codex-deco__ring--bl{bottom:13%;left:5%}\n.dsh-codex-deco__ring--br{bottom:13%;right:5%}\n@media (prefers-reduced-motion: reduce){.dsh-codex-deco__star{animation:none!important}}";
+        var DECO_CSS = "/* page colour moves to <html>: a negative-z layer paints under an in-flow\n   ancestor's background, so the body box must stop painting one. */\nhtml{background:var(--dsw-alias-bg-base)}\nbody{background-color:transparent}\n\n/* The layer lives INSIDE the conversation column (see mountLayer in the\n   client): `absolute; inset:0` fills that column and `z-index:-1` puts it\n   above the column's own background but below its content. The column is\n   transparent and `_frame` is the element painting the page colour, which is\n   why -1 is correct here. The client gives the panel `position:relative` (with\n   `z-index:auto`, so no stacking context) because the panel ships with no\n   positioning of its own — without that every absolute descendant resolved\n   against an ancestor and the layer came out at the window's left edge.\n   Parented there, the decoration is squeezed by the sidebar exactly as the\n   conversation is. */\n.dsh-codex-deco{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}\n\n/* ── 试做 19：浮动泡泡（2026-09-21，真粒子引擎版）─────────────────────────\n   泡泡不再是背景瓦片，而是逐颗生成的 DOM：引擎在 client.template.js 的\n   startBubbles()，每颗在生成时抽定 x / 尺寸 / 浓度 / 颜色 / 上升时长，\n   升出顶边后按 animationend 销毁并重生（重生时重新抽，x 每次都不一样）。\n   x 的分布按用户要求做成「统计上中间多、两边少，两端也要有一点」：\n   取两个均匀随机数求平均（三角分布）→ 中点密度最高、两端趋近 0 但可达；\n   BUBBLE_X_SAMPLES 改 3 更集中、改 1 就是均匀分布。\n   这里只负责容器与单颗泡泡的静态样式：柔边用 radial-gradient（不是硬边圆点），\n   上升动画只用 transform，走合成器；prefers-reduced-motion 时引擎不生成。\n   历史留档：02→18 全部已轮到本方案；本方案取代了之前的「瓦片 + 遮罩」写法。 */\n.dsh-codex-deco__dots{position:absolute;inset:0;overflow:hidden;pointer-events:none}\n/* 2026-09-21 用户要求「非模糊版本」：从 radial-gradient 柔边改成纯色实心圆，\n   边缘由 border-radius 切出来，是锐利的（不再有 72% 处的渐隐）。\n   要回到柔边版就把 background-color 换回\n   background-image:radial-gradient(circle at 50% 50%, currentColor, transparent 72%)。 */\n/* 形状锁：即使宿主页面里有别的 flex/尺寸规则，也不允许泡泡被拉扁。\n   （用户反馈过「看起来不是圆的」；真机实测直径是偶数、填充率 0.776 ≈ 正圆 0.785，\n   所以这里把会破坏圆形的可能性逐条堵死。） */\n.dsh-codex-bubble{position:absolute;bottom:-24px;\n  width:auto;height:auto;min-width:0;min-height:0;max-width:none;max-height:none;\n  flex:none;aspect-ratio:1/1;overflow:hidden;\n  /* 三重保证圆形（用户要求 border-radius 写 100）：\n     ① 背景是 SVG circle（几何由 SVG 自己保证）\n     ② border-radius:100%（比 50% 更狠，浏览器会按边夹到极限值，仍是正圆）\n     ③ clip-path:circle(50%) —— 万一圆角被外部 CSS 改掉，裁剪仍然切出正圆 */\n  border-radius:100%;clip-path:circle(50% at 50% 50%);-webkit-clip-path:circle(50% at 50% 50%);\n  /* 形状由 SVG circle 保证（见 client.template.js 的 bubbleFill）；background-color 只是兜底。\n     background-size:100% 100% 是关键：少了它，100×100 的 SVG 会按原始尺寸铺进几像素的盒子里，\n     只露出圆的一角，看起来就像方块。 */\n  background-color:currentColor;\n  background-size:100% 100%;background-position:center;background-repeat:no-repeat;\n  animation-name:dsh-codex-rise;animation-timing-function:linear;animation-fill-mode:forwards}\n@keyframes dsh-codex-rise{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-108vh,0)}}\n/* The composer seat is plain: see the note further down. */\n\n/* Halftone washes: four corners, so every edge of the window carries a mark.\n   2026-09-21 用户明确要求保留这一层（关掉的只有全屏铺满的主点阵）。\n   颜色仍是历史遗留的 currentColor：元素没设颜色，会继承正文色（冷紫灰），\n   暖色门禁只扫十六进制字面量、扫不到 currentColor，故一直没被发现。\n   要改暖：给下面这条规则加显式 color，取值用 DECO 里的暖色即可。 */\n.dsh-codex-deco__wash{position:absolute;width:380px;height:380px;opacity:.15;\nbackground-image:radial-gradient(currentColor 2px, transparent 2.3px);background-size:15px 15px;\nmask-image:radial-gradient(closest-side, #000, transparent);\n-webkit-mask-image:radial-gradient(closest-side, #000, transparent)}\n.dsh-codex-deco__wash--tl{top:-170px;left:-170px}\n.dsh-codex-deco__wash--tr{top:-170px;right:-170px}\n.dsh-codex-deco__wash--bl{bottom:-170px;left:-170px}\n.dsh-codex-deco__wash--br{bottom:-170px;right:-170px}\n\n/* Cross-stars: three per corner, staggered in size and colour so a corner\n   cluster reads as intentional rather than as one stray mark. */\n/* The spin layer inside a side star: it exists so the constant rotation is a\n   separate animation from the lifetime curve (animation-name cannot stack, and\n   one easing over both is what made the spin speed up in bursts). */\n.dsh-codex-deco__star__spin{position:absolute;inset:0;background:currentColor}\n.dsh-codex-deco__star{position:absolute;background:currentColor;\nclip-path:polygon(46% 0,54% 0,54% 46%,100% 46%,100% 54%,54% 54%,54% 100%,46% 100%,46% 54%,0 54%,0 46%,46% 46%)}\n.dsh-codex-deco__star--lg{width:26px;height:26px}\n.dsh-codex-deco__star--md{width:15px;height:15px;opacity:.72}\n.dsh-codex-deco__star--sm{width:9px;height:9px;opacity:.55}\n.dsh-codex-deco__star--rose{color:#b1524e}\n.dsh-codex-deco__star--rose-soft{color:#d7827e}\n.dsh-codex-deco__star--ochre{color:undefined}\n.dsh-codex-deco__star--breathe{animation:dsh-codex-breathe 7s ease-in-out infinite}\n.dsh-codex-deco__star--breathe-slow{animation:dsh-codex-breathe 11s ease-in-out infinite}\n@keyframes dsh-codex-breathe{0%,100%{transform:scale(1) rotate(0deg);opacity:.42}50%{transform:scale(1.22) rotate(45deg);opacity:.78}}\n\n/* Scatter positions, in viewport percentages (STAR_FIELD above): two columns\n   down the flanks plus a few marks around the composer band. */\n.dsh-codex-deco__star--t1{top:11.3%;left:31.0%}\n.dsh-codex-deco__star--t2{top:16.9%;left:47.0%}\n.dsh-codex-deco__star--t3{top:15.1%;left:63.0%}\n.dsh-codex-deco__star--t4{bottom:12.6%;left:39.0%}\n.dsh-codex-deco__star--t5{bottom:10.2%;left:59.0%}\n\n/* Twinkle loop for the flank marks: hold, shrink out, reappear a few percent\n   away (still inside the flank band), grow back, then drift home while fading.\n   Only transform and opacity animate, so this rides the compositor. The marks\n   over the reading column are deliberately NOT in this loop. */\n.dsh-codex-particle-zone{position:absolute;top:0;bottom:0;width:17%;pointer-events:none}\n.dsh-codex-particle-zone--left{left:0}\n.dsh-codex-particle-zone--right{right:0}\n.dsh-codex-particle{position:absolute}\n.dsh-codex-particle__spin{position:absolute;inset:0;\n  clip-path:polygon(46% 0,54% 0,54% 46%,100% 46%,100% 54%,54% 54%,54% 100%,46% 100%,46% 54%,0 54%,0 46%,46% 46%);transform-origin:50% 50%}\n\n/* Three accent blooms arranged as the VERTICES OF A TRIANGLE (left mid-height,\n   right-top, right-bottom), kept OUT IN THE SIDE MARGINS so they never compete\n   with the conversation text. Measured on the live panel: the text column spans\n   29.4%–70.2% of the panel, leaving ~30% of clear margin on each side, and the\n   500px bloom fits that margin comfortably. An earlier pass put the vertices at\n   30% / 72%, i.e. exactly on the text edges. Percentages are of the LAYER (the\n   conversation panel), so the whole triangle moves with it when the sidebar\n   opens. Colours are the bright warm values: at 16% over cream the darker ochre\n   rung blended into a brown that read as a bruise. */\n/* 光斑尺寸：2026-09-21 按用户要求整体放大到 1.5 倍。\n   原尺寸 min(24vw,440px) × min(46vh,460px)，现为 min(36vw,660px) × min(69vh,690px)；\n   顶点位置（left/top 百分比）与 16%/14% 的浓度都没动，所以只是「变大」，不是「变浓」。\n   注意：遮罩仍是 closest-side + transparent 86%，会随尺寸等比放大；\n   放大后右侧两颗会侵入正文列（正文列约占面板 29.4%–70.2%），这是本尺寸下的必然结果。 */\n.dsh-codex-deco__panel{position:absolute;transform:translate(-50%,-50%);\n  width:min(36vw,660px);height:min(69vh,690px);\n  mask-image:radial-gradient(closest-side, #000, transparent 80%);\n  -webkit-mask-image:radial-gradient(closest-side, #000, transparent 80%)}\n.dsh-codex-deco__panel--left{left:2%;top:44%;\n  background:radial-gradient(closest-side, color-mix(in srgb, #b1524e 14%, transparent), transparent)}\n.dsh-codex-deco__panel--right{left:98%;top:27%;\n  background:radial-gradient(closest-side, color-mix(in srgb, #d9a05b 14%, transparent), transparent)}\n.dsh-codex-deco__panel--mid{left:95%;top:73%;\n  background:radial-gradient(closest-side, color-mix(in srgb, #d7827e 12%, transparent), transparent)}\n\n/* Nothing is anchored to the composer. Two earlier attempts wrapped it: a pair\n   of dashed brackets, then a page-coloured 'clean plate' underneath to blank\n   the texture. Both read as a floating decoration that did not belong — the\n   user's own words were 'just delete it'. The seat is therefore plain, and the\n   dots simply run behind it exactly as they do everywhere else. Colour stays on\n   the flanks and never over the text column. */\n\n/* One faint outline ring per corner, well inside the viewport. */\n.dsh-codex-deco__ring{position:absolute;width:34px;height:34px;opacity:.3;\nbackground:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23b1524e' stroke-width='1.5'/%3E%3C/svg%3E\") center/contain no-repeat}\n.dsh-codex-deco__ring--tl{top:14%;left:5%}\n.dsh-codex-deco__ring--tr{top:14%;right:5%}\n.dsh-codex-deco__ring--bl{bottom:13%;left:5%}\n.dsh-codex-deco__ring--br{bottom:13%;right:5%}\n@media (prefers-reduced-motion: reduce){.dsh-codex-deco__star{animation:none!important}}";
 
         /**
          * Tag the first and last flow item of every assistant run.
@@ -909,10 +1022,13 @@
             layer.id = DECO_ID;
             layer.className = "dsh-codex-deco";
             layer.setAttribute("aria-hidden", "true");
+            // 泡泡容器按引用记下来（引擎不做 DOM 查询，测试假 DOM 不支持查询）。
+            var bubbleHost = null;
             for (var i = 0; i < DECO_PARTS.length; i += 1) {
               var part = document.createElement("div");
               part.className = DECO_PARTS[i];
               layer.appendChild(part);
+              if (DECO_PARTS[i].indexOf("dsh-codex-deco__dots") >= 0) bubbleHost = part;
             }
             // Provisional parent: the shell may not have mounted yet, and the
             // mountLayer pass below moves it into the conversation column as soon
@@ -921,6 +1037,7 @@
             // Started once, on the element that outlives every re-mount: the
             // disposer rides on the node so teardown can stop the engine.
             layer.__stopParticles = startParticles(layer);
+            layer.__stopBubbles = startBubbles(bubbleHost);
           }
           mountLayer();
           // The shell mounts asynchronously, so keep trying for a while rather
@@ -1098,6 +1215,7 @@
                 // live nodes, and letting it run into a removed layer would leak
                 // both the timers and the elements.
                 if (typeof layer.__stopParticles === "function") layer.__stopParticles();
+                if (typeof layer.__stopBubbles === "function") layer.__stopBubbles();
                 if (layer.__runsTimer !== undefined) clearInterval(layer.__runsTimer);
                 layer.remove();
               }
