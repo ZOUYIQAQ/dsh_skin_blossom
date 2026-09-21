@@ -731,13 +731,35 @@ const TEXT_STARS = (() => {
  * particle engine spawns them, so they can be reborn in a different place each
  * time (a CSS loop would repeat the same spot forever).
  */
+/**
+ * 正文区那 5 颗固定星的运动参数（2026-09-21 用户三条要求）。
+ *
+ * 关键澄清：用户说的「左右摇摆」**指的是旋转**，不是水平位移 —— 所以这里没有 translateX，
+ * 摇摆幅度就是角度的摆幅 `rock`（度）。
+ *
+ *   ① 旋转过慢 → 周期从统一的 11s 收到 3.4–5.25s，并按摆幅折算角速度：
+ *                 平均角速度 = 4 × rock / 周期 ≈ 32–71 °/s（原 45°/11s ≈ 8 °/s）
+ *   ② 节奏统一 → 每颗自己的周期 + 负延迟错相位（原来 5 颗全是同一个 11s 且同相位）
+ *   ③ 摇摆不足 → 角度摆幅由原来单向 45° 改成对称 ±38°…±60°（总行程 76°–120°，约 2 倍）
+ * 位置/大小/配色仍由 TEXT_STARS 决定，这里只动「怎么动」。
+ */
+const STAR_MOTION = [
+  // 2026-09-21 二次调整：用户「左右摇摆的速度不够快」→ 周期整体 ×0.5
+  // （摆幅 angle 不变，所以是纯提速；角速度约 32–71 °/s，改前是 8.2 °/s）。
+  // phase 是「摇摆」那条动画在周期里的起始位置（0..1），另外两条按固定偏移错开。
+  { duration: 3.7, phase: 0.10, rock: 52 },
+  { duration: 4.8, phase: 0.38, rock: 38 },
+  { duration: 3.4, phase: 0.62, rock: 60 },
+  { duration: 5.25, phase: 0.24, rock: 44 },
+  { duration: 4.1, phase: 0.78, rock: 57 },
+];
 const STAR_PARTS = TEXT_STARS.map((star, index) =>
   [
     "dsh-codex-deco__star",
     `dsh-codex-deco__star--${star.size}`,
     `dsh-codex-deco__star--${star.tint}`,
     `dsh-codex-deco__star--t${index + 1}`,
-    "dsh-codex-deco__star--breathe-slow",
+    "dsh-codex-deco__star--sway",
   ].join(" ")
 );
 const starPositionRules = TEXT_STARS.map((star, index) => {
@@ -746,6 +768,31 @@ const starPositionRules = TEXT_STARS.map((star, index) => {
   if (star.bottom !== undefined) bits.push(`bottom:${star.bottom.toFixed(1)}%`);
   if (star.left !== undefined) bits.push(`left:${star.left.toFixed(1)}%`);
   if (star.right !== undefined) bits.push(`right:${star.right.toFixed(1)}%`);
+  // 运动参数与位置写在同一条规则里（同选择器的两条规则也行，合成一条更好读）。
+  const motion = STAR_MOTION[index];
+  if (motion !== undefined) {
+    // 三条动画的周期/相位各不相同 —— 比例取得刻意"不整"（1.37 / 0.79），
+    // 这样它们不会周期性重合，观感上也不会出现"转到右边正好也最亮最大"。
+    // 解耦策略（2026-09-21 第二轮）：上一版只是把周期改成 1 : 1.37 : 0.79，长期相关性虽然
+    // 已经是 0，但三条的周期太接近、且 t=0 时都落在各自周期的 11–19%（都在从最小值往上走），
+    // 所以刚打开时看起来仍然是"一起动"。现在改成：
+    //   周期比例 1 : 2.8 : 1.7（差得更远）、相位刻意停在周期的不同位置、
+    //   缓动也区分开（rotate/scale 用 ease-in-out，opacity 用 linear）。
+    const rockT = motion.duration;
+    const scaleT = rockT * 2.8;
+    const fadeT = rockT * 1.7;
+    const rockP = motion.phase;
+    const scaleP = (rockP + 0.52) % 1;
+    const fadeP = (rockP + 0.25) % 1;
+    const rockD = -rockP * rockT;
+    const scaleD = -scaleP * scaleT;
+    const fadeD = -fadeP * fadeT;
+    bits.push(
+      `--rock:${motion.rock}deg`,
+      `animation-duration:${rockT}s, ${scaleT.toFixed(2)}s, ${fadeT.toFixed(2)}s`,
+      `animation-delay:${rockD.toFixed(2)}s, ${scaleD.toFixed(2)}s, ${fadeD.toFixed(2)}s`
+    );
+  }
   return `.dsh-codex-deco__star--t${index + 1}{${bits.join(";")}}`;
 });
 
@@ -878,13 +925,25 @@ const DECO_CSS = [
   `.dsh-codex-deco__star--rose{color:${DECO.rose}}`,
   `.dsh-codex-deco__star--rose-soft{color:${DECO.roseSoft}}`,
   `.dsh-codex-deco__star--ochre{color:${DECO.ochre}}`,
-  ".dsh-codex-deco__star--breathe{animation:dsh-codex-breathe 7s ease-in-out infinite}",
-  ".dsh-codex-deco__star--breathe-slow{animation:dsh-codex-breathe 11s ease-in-out infinite}",
+  "/* 固定星的运动：每颗三条独立动画（摇摆 / 缩放 / 明暗），周期与相位都由 --t1…--t5 给。",
+  "   注意「摇摆」是旋转，不是位移 —— 用户明确澄清过。 */",
+  "/* 三条动画并行，属性彼此独立：",
+  "     rotate → dsh-codex-star-rock（摇摆）  scale → dsh-codex-star-scale（呼吸缩放）",
+  "     opacity → dsh-codex-star-fade（明暗）",
+  "   它们各自有独立的周期与相位（见 --t1…--t5 规则），所以不会再出现「转到右边的那一刻正好",
+  "   也最亮最大」这种被绑在一起的观感。用 rotate/scale 这两个独立变换属性而不是 transform，",
+  "   正是为了让旋转与缩放在同一条时间线上解耦。 */",
+  ".dsh-codex-deco__star--sway{",
+  "  animation-name:dsh-codex-star-rock, dsh-codex-star-scale, dsh-codex-star-fade;",
+  "  animation-timing-function:ease-in-out, ease-in-out, linear;",
+  "  animation-iteration-count:infinite, infinite, infinite}",
   // `--spin` (single dash) was the pre-nesting rule. Side stars now use the
   // nested `__spin` layer below, and leaving the old rule in place meant a stale
   // `animation-name` could win the cascade against the lifetime animation —
   // which is what silently killed the death phase. Removed on purpose.
-  "@keyframes dsh-codex-breathe{0%,100%{transform:scale(1) rotate(0deg);opacity:.42}50%{transform:scale(1.22) rotate(45deg);opacity:.78}}",
+  "@keyframes dsh-codex-star-rock{0%,100%{rotate:calc(-1 * var(--rock, 45deg))}50%{rotate:var(--rock, 45deg)}}",
+  "@keyframes dsh-codex-star-scale{0%,100%{scale:1}50%{scale:1.22}}",
+  "@keyframes dsh-codex-star-fade{0%,100%{opacity:.42}50%{opacity:.78}}",
   "",
   "/* Scatter positions, in viewport percentages (STAR_FIELD above): two columns",
   "   down the flanks plus a few marks around the composer band. */",
