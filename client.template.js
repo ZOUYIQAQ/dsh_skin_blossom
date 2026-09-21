@@ -362,6 +362,13 @@
         var BUBBLE_MAX_OPACITY = 0.3;
         var BUBBLE_MIN_RISE_S = 45;
         var BUBBLE_MAX_RISE_S = 95;
+        /**
+         * 生成时的淡入时长（2026-09-21 用户：「泡泡出现时是瞬间刷新的，希望从透明逐渐变为不透明」）。
+         * 只作用于「出生」这一段：透明度从 0 由缓出曲线升到该泡泡自己的峰值，之后保持不变。
+         * 出生后立刻开始上浮，所以视觉上就是「在它该出现的位置慢慢显形，然后继续往上飘」。
+         */
+        var BUBBLE_FADE_MIN_S = 2.5;
+        var BUBBLE_FADE_MAX_S = 5;
         /** 取几个均匀随机数求平均决定 x：2 = 三角分布（默认），3 = 更集中，1 = 均匀。 */
         var BUBBLE_X_SAMPLES = 2;
         /** 泡泡颜色：全部来自暖色调色板，避免出现冷色。 */
@@ -411,9 +418,20 @@
           var colour = BUBBLE_COLOURS[Math.floor(Math.random() * BUBBLE_COLOURS.length)];
           el.style.color = colour;                      // 兜底色：背景图万一不生效也不至于透明
           el.style.backgroundImage = bubbleFill(colour); // 真正的正圆（SVG circle）
-          el.style.animationDuration = duration.toFixed(1) + "s";
-          el.style.animationDelay = (-offset).toFixed(1) + "s";
-          var recycle = function () {
+          // 峰值浓度：既写成 opacity（无动画时的兜底），也写进 CSS 变量供淡入动画的 to 使用
+          // —— 关键帧里直接用 opacity 会把每颗泡泡不同的浓度抹平成同一个值。
+          var peak = roll(BUBBLE_MIN_OPACITY, BUBBLE_MAX_OPACITY);
+          el.style.opacity = peak.toFixed(2);
+          el.style.setProperty("--bubble-peak", peak.toFixed(2));
+          var fade = roll(BUBBLE_FADE_MIN_S, BUBBLE_FADE_MAX_S);
+          // 两个动画各用各的时长/延迟：① 上浮（负延迟，出生即散布在路径上的随机高度）
+          // ② 淡入（从 0 开始，就是「出生」这一刻）
+          el.style.animationDuration = duration.toFixed(1) + "s, " + fade.toFixed(1) + "s";
+          el.style.animationDelay = (-offset).toFixed(1) + "s, 0s";
+          var recycle = function (event) {
+            // 元素上挂了两个动画，animationend 会来两次：只认上浮那一个，
+            // 否则淡入结束（几秒后）就会把泡泡提前回收掉。
+            if (event !== undefined && event.animationName !== undefined && event.animationName !== "dsh-codex-rise") return;
             if (bubbles.stopped) return;
             if (typeof el.remove === "function") el.remove();
             spawnBubble(host);
