@@ -1,21 +1,20 @@
-# 桃子气泡水 · Peach Fizz
+﻿# 桃子气泡水 · Peach Fizz
 
 一个动态主题。为 DeepSeek Harness (DSH) Web GUI 做的第三方暖色皮肤：rose-pine Dawn 调的奶油底色，配上柔光、缓慢上浮的气泡与摇摆的固定星 —— 简洁、颜色干净。
 
 界面背景里有一层持续演进的装饰：气泡在缓慢上浮，固定星在摇摆、缩放、明暗起伏，两侧的粒子星各自旋转并生灭。
 
 <p align="center">
-  <img src="assets/preview-chat.jpg" alt="对话界面：完整界面下的奶油底色、柔光、气泡与摇摆的固定星" width="100%">
+  <img src="assets/preview-empty.jpg" alt="完整界面：侧栏、对话框与主题装饰" width="100%">
   <br>
-  <sub>对话界面 —— 装饰层挂在对话栏内部，侧栏开合时随之被挤压</sub>
+  <sub>完整界面 —— 侧栏 + 对话框，配四角 halftone、三处暖色光斑与两侧粒子星</sub>
 </p>
 
 <p align="center">
-  <img src="assets/preview-empty.jpg" alt="完整界面：侧栏、对话框与四角 halftone、暖色光斑、边缘粒子" width="100%">
+  <img src="assets/preview-chat.jpg" alt="对话界面：奶油底色、柔光、气泡与摇摆的固定星" width="100%">
   <br>
-  <sub>完整界面 —— 侧栏 + 对话框 + 四角 halftone、三处暖色光斑、两侧粒子星与缓慢上浮的气泡</sub>
+  <sub>对话界面 —— 装饰层挂在对话栏内部，侧栏开合时随之被挤压</sub>
 </p>
-
 ---
 
 ## 标识一览
