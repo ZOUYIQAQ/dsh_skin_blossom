@@ -5,15 +5,15 @@
 界面背景里有一层持续演进的装饰：气泡在缓慢上浮，固定星在摇摆、缩放、明暗起伏，两侧的粒子星各自旋转并生灭。
 
 <p align="center">
-  <img src="assets/preview-chat.jpg" alt="对话界面：奶油底色、四角柔光、气泡与摇摆的固定星" width="100%">
+  <img src="assets/preview-chat.jpg" alt="对话界面：完整界面下的奶油底色、柔光、气泡与摇摆的固定星" width="100%">
   <br>
   <sub>对话界面 —— 装饰层挂在对话栏内部，侧栏开合时随之被挤压</sub>
 </p>
 
 <p align="center">
-  <img src="assets/preview-empty.jpg" alt="界面装饰：四角 halftone、暖色光斑与边缘粒子" width="100%">
+  <img src="assets/preview-empty.jpg" alt="完整界面：侧栏、对话框与四角 halftone、暖色光斑、边缘粒子" width="100%">
   <br>
-  <sub>装饰层全貌 —— 四角 halftone、三处暖色光斑、两侧粒子星与缓慢上浮的气泡</sub>
+  <sub>完整界面 —— 侧栏 + 对话框 + 四角 halftone、三处暖色光斑、两侧粒子星与缓慢上浮的气泡</sub>
 </p>
 
 ---
