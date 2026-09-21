@@ -777,6 +777,18 @@ const ringDataUri =
   "' stroke-width='1.5'/%3E%3C/svg%3E\")";
 /** Literal colour for the ring's inline SVG (data URIs cannot read var()). */
 const ringColorHex = DECO.rose.slice(1);
+
+// ── 背景装饰：2026-09-21 改版后的口径 ──────────────────────────────────────────
+// 已撤掉：全屏铺满的主点阵（__dots 的两档点）与试做过的网格线。
+// 保留／新增（都在下面的 DECO_CSS 里）：
+//   __wash   四角 halftone（用户明确要求保留）
+//   __panel  三处光斑，放大到 1.5 倍，并做了位置/浓度/收边微调
+//   __ring   四角圆环（原版）
+//   __dots   现在只当「叠加层」容器：挂浮动泡泡粒子（300px 瓦片 + 60s transform 上浮）
+// 要还原主点阵，按这组参数重建（值取自移除前最后一次口径）：
+//   28px 瓦片，玫瑰 #b1524e fill-opacity 0.22 + 暖金 #d9a05b 0.26，
+//   层 opacity .5，background-size:28px 28px。
+
 const DECO_CSS = [
   "/* page colour moves to <html>: a negative-z layer paints under an in-flow",
   "   ancestor's background, so the body box must stop painting one. */",
@@ -795,20 +807,40 @@ const DECO_CSS = [
   "   conversation is. */",
   ".dsh-codex-deco{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}",
   "",
-  "/* ── dot grid ─────────────────────────────────────────────────────────────",
-  "   A tileable SVG, not CSS gradients. Gradients had to be positioned and sized",
-  "   against the layout, and one revision silently blanked the whole layer through",
-  "   `mask-composite`; a background tile needs no mask, size or position — it",
-  "   repeats from the element's origin, which is exactly 'uniform across the",
-  "   window'. Both dots are warm and carried at low fill-opacity so the dots read",
-  "   as one tint rather than as two colours. */",
-  ".dsh-codex-deco__dots{position:absolute;inset:0;opacity:.5;",
-  `background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ccircle cx='3' cy='3' r='1.5' fill='%23${DECO.rose.slice(1)}' fill-opacity='0.30'/%3E%3Ccircle cx='17' cy='17' r='1.5' fill='%23${DECO.warmGold.slice(1)}' fill-opacity='0.26'/%3E%3C/svg%3E");`,
-  "background-size:28px 28px}",
-  "",
+  "/* ── 试做 19：微粒上浮（2026-09-21，用户确认「看起来不错」的那一版）─────────",
+  "   300px 瓦片里 12 颗柔边微粒（尺寸 1.0–2.0px、浓度 22%–38% 各不相同），",
+  "   整层用 transform 在 60s 内匀速上移一个瓦片高度后无缝循环：只用 transform",
+  "   （走合成器），linear + infinite 匀速上浮，到顶无缝接回；已加",
+  "   prefers-reduced-motion 关闭动画。",
+  "   撤销记录：其后的「横向遮罩版」和「JS 逐颗粒子引擎版」都已回退 ——",
+  "   粒子引擎那一版导致背景装饰整体加载失败（真机故障，测试假 DOM 没暴露）。",
+  "   历史留档：02→18 全部已轮到本方案。 */",
+  ".dsh-codex-deco__dots{position:absolute;inset:0;overflow:hidden;pointer-events:none}",
+  ".dsh-codex-deco__dots::before{content:'';position:absolute;inset:-40% 0;",
+  "  background-image:",
+  `    radial-gradient(1.6px 1.6px at 30px 40px,   color-mix(in srgb, ${DECO.rose} 35%, transparent), transparent),`,
+  `    radial-gradient(1.2px 1.2px at 95px 130px,  color-mix(in srgb, ${DECO.warmGold} 30%, transparent), transparent),`,
+  `    radial-gradient(1.8px 1.8px at 150px 75px,  color-mix(in srgb, ${DECO.rose} 28%, transparent), transparent),`,
+  `    radial-gradient(1.2px 1.2px at 215px 165px, color-mix(in srgb, ${DECO.warmGold} 32%, transparent), transparent),`,
+  `    radial-gradient(1.5px 1.5px at 265px 225px, color-mix(in srgb, ${DECO.rose} 25%, transparent), transparent),`,
+  `    radial-gradient(1.1px 1.1px at 55px 255px,  color-mix(in srgb, ${DECO.warmGold} 27%, transparent), transparent),`,
+  `    radial-gradient(1.3px 1.3px at 125px 25px,  color-mix(in srgb, ${DECO.rose} 22%, transparent), transparent),`,
+  `    radial-gradient(2.0px 2.0px at 180px 235px, color-mix(in srgb, ${DECO.rose} 38%, transparent), transparent),`,
+  `    radial-gradient(1.0px 1.0px at 250px 105px, color-mix(in srgb, ${DECO.warmGold} 34%, transparent), transparent),`,
+  `    radial-gradient(1.4px 1.4px at 25px 175px,  color-mix(in srgb, ${DECO.rose} 30%, transparent), transparent),`,
+  `    radial-gradient(1.2px 1.2px at 280px 295px, color-mix(in srgb, ${DECO.warmGold} 24%, transparent), transparent),`,
+  `    radial-gradient(1.6px 1.6px at 155px 195px, color-mix(in srgb, ${DECO.rose} 33%, transparent), transparent);`,
+  "  background-size:300px 300px;",
+  "  animation:dsh-codex-float 60s linear infinite}",
+  "@keyframes dsh-codex-float{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,-300px,0)}}",
+  "@media (prefers-reduced-motion: reduce){.dsh-codex-deco__dots::before{animation:none!important}}",
   "/* The composer seat is plain: see the note further down. */",
   "",
-  "/* Halftone washes: four corners, so every edge of the window carries a mark. */",
+  "/* Halftone washes: four corners, so every edge of the window carries a mark.",
+  "   2026-09-21 用户明确要求保留这一层（关掉的只有全屏铺满的主点阵）。",
+  "   颜色仍是历史遗留的 currentColor：元素没设颜色，会继承正文色（冷紫灰），",
+  "   暖色门禁只扫十六进制字面量、扫不到 currentColor，故一直没被发现。",
+  "   要改暖：给下面这条规则加显式 color，取值用 DECO 里的暖色即可。 */",
   ".dsh-codex-deco__wash{position:absolute;width:380px;height:380px;opacity:.15;",
   "background-image:radial-gradient(currentColor 2px, transparent 2.3px);background-size:15px 15px;",
   "mask-image:radial-gradient(closest-side, #000, transparent);",
@@ -859,21 +891,26 @@ const DECO_CSS = [
   "   conversation panel), so the whole triangle moves with it when the sidebar",
   "   opens. Colours are the bright warm values: at 16% over cream the darker ochre",
   "   rung blended into a brown that read as a bruise. */",
+  "/* 光斑尺寸：2026-09-21 按用户要求整体放大到 1.5 倍。",
+  "   原尺寸 min(24vw,440px) × min(46vh,460px)，现为 min(36vw,660px) × min(69vh,690px)；",
+  "   顶点位置（left/top 百分比）与 16%/14% 的浓度都没动，所以只是「变大」，不是「变浓」。",
+  "   注意：遮罩仍是 closest-side + transparent 86%，会随尺寸等比放大；",
+  "   放大后右侧两颗会侵入正文列（正文列约占面板 29.4%–70.2%），这是本尺寸下的必然结果。 */",
   ".dsh-codex-deco__panel{position:absolute;transform:translate(-50%,-50%);",
-  "  width:min(24vw,440px);height:min(46vh,460px);",
-  "  mask-image:radial-gradient(closest-side, #000, transparent 86%);",
-  "  -webkit-mask-image:radial-gradient(closest-side, #000, transparent 86%)}",
+  "  width:min(36vw,660px);height:min(69vh,690px);",
+  "  mask-image:radial-gradient(closest-side, #000, transparent 80%);",
+  "  -webkit-mask-image:radial-gradient(closest-side, #000, transparent 80%)}",
   // Left vertex: slightly above mid height, flush to the left edge.
   ".dsh-codex-deco__panel--left{left:2%;top:44%;",
-  `  background:radial-gradient(closest-side, color-mix(in srgb, ${DECO.rose} 16%, transparent), transparent)}`,
+  `  background:radial-gradient(closest-side, color-mix(in srgb, ${DECO.rose} 14%, transparent), transparent)}`,
   // Right-top vertex.
   ".dsh-codex-deco__panel--right{left:98%;top:27%;",
-  `  background:radial-gradient(closest-side, color-mix(in srgb, ${DECO.warmGold} 16%, transparent), transparent)}`,
+  `  background:radial-gradient(closest-side, color-mix(in srgb, ${DECO.warmGold} 14%, transparent), transparent)}`,
   // Right-bottom vertex — the rose-gold one. Moved left by exactly half of the
   // first attempt: 98% → 84% overshot, so the final seat is 91%. Still clears the
   // text column, which ends at 70.2%.
-  ".dsh-codex-deco__panel--mid{left:91%;top:73%;",
-  `  background:radial-gradient(closest-side, color-mix(in srgb, ${DECO.warmCoral} 14%, transparent), transparent)}`,
+  ".dsh-codex-deco__panel--mid{left:95%;top:73%;",
+  `  background:radial-gradient(closest-side, color-mix(in srgb, ${DECO.warmCoral} 12%, transparent), transparent)}`,
   "",
   "/* Nothing is anchored to the composer. Two earlier attempts wrapped it: a pair",
   "   of dashed brackets, then a page-coloured 'clean plate' underneath to blank",
