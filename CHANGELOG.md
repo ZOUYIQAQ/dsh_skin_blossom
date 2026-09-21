@@ -80,7 +80,7 @@
 
 ## 安装（已在本机完成）
 
-1. 插件目录：`D:\software\dsh\data\plugins\dsh_skin_blossom`
+1. 插件目录：`<DSH_HOME>\plugins\dsh_skin_blossom`
 2. junction：`data\profiles\web\node_modules\dsh_skin_blossom` → 插件目录
 3. `data\profiles\web\package.json` 增加 `"dsh_skin_blossom": "file:../../plugins/dsh_skin_blossom"`
 4. `data\profiles\web\cordis.patch.yml` 增加 `- id: dsh_skin_blossom`
@@ -107,8 +107,8 @@
 #    - id: dsh_skin_blossom
 #      name: dsh_skin_blossom
 # 2. 或整目录移除
-Remove-Item D:\software\dsh\data\profiles\web\node_modules\dsh_skin_blossom -Force
-Remove-Item D:\software\dsh\data\plugins\dsh_skin_blossom -Recurse -Force
+Remove-Item <DSH_HOME>\profiles\web\node_modules\dsh_skin_blossom -Force
+Remove-Item <DSH_HOME>\plugins\dsh_skin_blossom -Recurse -Force
 ```
 
 皮肤只写 `document.body` 的内联变量与一个 `<style>` 节点，卸载后立即回到 `data-ds-dark-theme` 的调色板。
@@ -118,7 +118,7 @@ Remove-Item D:\software\dsh\data\plugins\dsh_skin_blossom -Recurse -Force
 `scripts/build.mjs` 是唯一真源：改 `SPEC` 或派生规则，然后
 
 ```powershell
-cd D:\software\dsh\data\plugins\dsh_skin_blossom
+cd <DSH_HOME>\plugins\dsh_skin_blossom
 node scripts/build.mjs      # 重新生成 client.js + theme-tokens.json，并跑对比度门禁
 node scripts/test-client.mjs # 16 项运行时契约测试（stub 掉 loader/cordis/DOM）
 ```
