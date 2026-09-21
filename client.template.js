@@ -108,6 +108,15 @@
         var STAR_LIFE_MIN_MS = 42000;
         var STAR_LIFE_MAX_MS = 96000;
         /**
+         * 显形段占寿命的比例：从透明涨到满亮度所花的时间 = life × 这个值。
+         *
+         * 2026-09-21 用户：「他们的显形速度有些过慢了，希望加快大约一倍」
+         *   → 0.09 → 0.045。按寿命 42–96s 算，显形时间由 3.8–8.6s 变成 1.9–4.3s。
+         * 只压缩「显形」这一段；之后的闪烁/呼吸曲线（0.22 / 0.36 / 0.53 / 0.7 / 0.86）
+         * 位置不动，所以中后期的节奏与观感不变。
+         */
+        var STAR_EMERGE_FRACTION = 0.045;
+        /**
          * Non-overlap constraint, by explicit request ("星星间禁止重合").
          *
          * `STAR_MIN_GAP_PX` is the clear space required between two stars' edges on
@@ -154,18 +163,29 @@
           var box = typeof zone.getBoundingClientRect === "function" ? zone.getBoundingClientRect() : null;
           if (box === null || box.width <= 0 || box.height <= 0) return null;
           var existing = zone.querySelectorAll(".dsh-codex-particle");
+          /**
+           * 位置一律用百分比（2026-09-21）。原来存的是 px，而 px 是相对「当时的盒子」算的：
+           * 层刚建立时还挂在 body 上，zone 的盒子是整个视口；等 mountLayer 把它移进对话栏
+           * （更窄、且整体右移）之后，那些 px 就落到错的位置，右侧那带甚至会跑到面板外，
+           * 只能等自然重生（42–96s）才回位 —— 这就是用户反馈的「第一次打开页面有些迟钝」。
+           * 百分比与挂载时机、窗口尺寸都无关，从根上杜绝这类换算问题（泡泡也是这么做的）。
+           */
+          var maxXPct = Math.max(0, 1 - size / box.width);
+          var maxYPct = Math.max(0, 1 - size / box.height);
           for (var attempt = 0; attempt < REJECTION_TRIES; attempt += 1) {
-            var x = roll(0, Math.max(1, box.width - size));
-            var y = roll(0, Math.max(1, box.height - size));
-            var cx = x + size / 2;
-            var cy = y + size / 2;
+            var x = roll(0, maxXPct);
+            var y = roll(0, maxYPct);
+            // 重叠判定需要真实距离，这里按当前盒子把百分比换算回 px 再比（只在本次判定里用，
+            // 不落盘，所以不会再产生「存下来的 px 会过期」的问题）。
+            var cx = x * box.width + size / 2;
+            var cy = y * box.height + size / 2;
             var clash = false;
             for (var i = 0; i < existing.length; i += 1) {
               var other = existing[i];
               var ow = Number.parseFloat(other.style.width) || size;
               var oh = Number.parseFloat(other.style.height) || size;
-              var ox = (Number.parseFloat(other.style.left) || 0) + ow / 2;
-              var oy = (Number.parseFloat(other.style.top) || 0) + oh / 2;
+              var ox = (Number.parseFloat(other.style.left) / 100 || 0) * box.width + ow / 2;
+              var oy = (Number.parseFloat(other.style.top) / 100 || 0) * box.height + oh / 2;
               var need = (size + Math.max(ow, oh)) / 2 + STAR_MIN_GAP_PX;
               if (Math.abs(cx - ox) < need && Math.abs(cy - oy) < need) {
                 clash = true;
@@ -239,8 +259,9 @@
 
           var outer = document.createElement("div");
           outer.className = "dsh-codex-particle";
-          outer.style.left = Math.round(x) + "px";
-          outer.style.top = Math.round(y) + "px";
+          // x/y 是 0..1 的比例，写入即百分比 —— 见 pickPosition 的注释。
+          outer.style.left = (x * 100).toFixed(3) + "%";
+          outer.style.top = (y * 100).toFixed(3) + "%";
           outer.style.width = size + "px";
           outer.style.height = size + "px";
           outer.setAttribute("aria-hidden", "true");
@@ -273,7 +294,7 @@
             outer.animate(
               [
                 { opacity: 0, transform: "scale(0.3)" },
-                { opacity: peak, transform: "scale(1)", offset: 0.09 },
+                { opacity: peak, transform: "scale(1)", offset: STAR_EMERGE_FRACTION },
                 { opacity: peak * 0.62, transform: "scale(0.92)", offset: 0.22 },
                 { opacity: peak, transform: "scale(1.06)", offset: 0.36 },
                 { opacity: peak * 0.7, transform: "scale(0.95)", offset: 0.53 },
@@ -321,7 +342,11 @@
           var zones = layer.querySelectorAll(".dsh-codex-particle-zone");
           for (var z = 0; z < zones.length; z += 1) {
             for (var n = 0; n < STARS_PER_ZONE; n += 1) {
-              scheduleZone(zones[z], 300 + Math.random() * 6000);
+              // 首批不排队（2026-09-21 用户：「泡泡可以迅速加载第一批，十字星却要等一段时间」）。
+              // 原来这里是 `300 + Math.random() * 6000`，12 颗被撒在 0.3–6.3 秒之间，所以刚启动时
+              // 画面上一颗都没有。改成 0 延迟后首批立即出生；出生后的显形曲线（寿命的前 9%）
+              // 与后续重生的随机间隔都保持原样，稳态观感不变。
+              scheduleZone(zones[z], 0);
             }
           }
           return function () {
